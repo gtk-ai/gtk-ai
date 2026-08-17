@@ -9,10 +9,30 @@ import (
 	_ "github.com/jmeiracorbal/gtk-ai/modules/git"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/grep"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/ls"
+	_ "github.com/jmeiracorbal/gtk-ai/modules/pytest"
+	_ "github.com/jmeiracorbal/gtk-ai/modules/python"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/readcmd"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/rg"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/tree"
 )
+
+func TestRewritePytest(t *testing.T) {
+	got, ok := Rewrite("pytest -v", "gtkai")
+	if !ok || got != "gtkai pytest -v" {
+		t.Fatalf("got %q ok=%v", got, ok)
+	}
+}
+
+func TestRewritePythonMPytest(t *testing.T) {
+	got, ok := Rewrite("python -m pytest", "gtkai")
+	if !ok || got != "gtkai python -m pytest" {
+		t.Fatalf("got %q ok=%v", got, ok)
+	}
+	got, ok = Rewrite("python3 -m pytest tests/", "gtkai")
+	if !ok || got != "gtkai python3 -m pytest tests/" {
+		t.Fatalf("got %q ok=%v", got, ok)
+	}
+}
 
 func TestRewriteCargoTest(t *testing.T) {
 	got, ok := Rewrite("cargo test", "gtkai")

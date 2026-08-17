@@ -18,12 +18,13 @@ import (
 	_ "github.com/jmeiracorbal/gtk-ai/modules/git"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/grep"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/ls"
-	_ "github.com/jmeiracorbal/gtk-ai/modules/readcmd"
+	_ "github.com/jmeiracorbal/gtk-ai/modules/pytest"
+	_ "github.com/jmeiracorbal/gtk-ai/modules/python"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/rg"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/tree"
 )
 
-const version = "0.7.0"
+const version = "0.8.0"
 
 func usage() {
 	fmt.Fprintf(os.Stderr, `gtkai %s
