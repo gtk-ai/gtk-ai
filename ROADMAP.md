@@ -1,213 +1,163 @@
 # Roadmap: gtk-ai frente a rtk 0.42.4
 
-Propuesta de actualización. No implementa código: describe el desfase, prioriza por ahorro de tokens y pide validación antes de aplicar cambios.
+Comparación contra [rtk-ai/rtk](https://github.com/rtk-ai/rtk) `0.42.4` (`ba7a9ce`). gtk-ai está en `0.3.3`.
 
-Comparación hecha contra [rtk-ai/rtk](https://github.com/rtk-ai/rtk) `0.42.4` (`ba7a9ce`, rama `develop`, 2026-06). gtk-ai está en `0.3.3`.
-
-## Conclusión
-
-gtk no está “unas versiones atrás”. Es un subconjunto de rtk con otra arquitectura. rtk intercepta el comando **antes** de ejecutarlo (`PreToolUse` → `git status` se convierte en `rtk git status`) e inyecta flags (`--porcelain`, `go test -json`). gtk filtra el stdout **después** (`PostToolUse`).
-
-Eso limita lo que se puede copiar tal cual. También da a gtk ventajas que rtk no tiene: filtra la herramienta nativa `Read`, trunca MCP y puede cubrir `Grep`/`Glob` de Claude Code. rtk lo dice en su README: esas tools no pasan por su hook.
-
-El mayor ahorro no está en portar los 100+ comandos de rtk. Está en:
-
-1. hacer que los módulos actuales reduzcan de verdad (hoy `ls` no ahorra nada)
-2. compactar git/grep/read al nivel de rtk
-3. añadir runners de test/build (`go test`, `pytest`, `cargo test`, `npm test`) — rtk declara 90%+ ahí
-4. decidir si gtk sigue siendo solo post-filtro o también reescribe comandos
+**Decisión de producto (2026-08-17):** gtk sigue el mismo camino que rtk. Reescribe el comando **antes** de ejecutarlo (`PreToolUse` → `git status` se convierte en `gtkai git status`). gtkai ejecuta el binario real, inyecta flags y filtra la salida. El post-filtro solo sobrevive para tools nativas de Claude Code que no pasan por Bash (`Read`, MCP, `Grep`, `Glob`).
 
 ---
 
-## Arquitectura: qué no hay que copiar a ciegas
+## 1. Principal — rewrite PreToolUse (proxy)
 
-| | gtk-ai 0.3.3 | rtk 0.42.4 |
+Hoy gtk filtra *después*. `Module.Rewrite` existe y nunca se llama. Ese es el fallo de diseño, no un desfase de catálogo.
+
+### Flujo objetivo
+
+```text
+Sin gtk:     Claude --git status--> shell --> git --> stdout crudo --> Claude
+
+Con gtk:     Claude --git status--> PreToolUse --> gtkai hook-pre
+                                                      |
+                                                      v
+                                         command: gtkai git status
+                                                      |
+                                                      v
+                                         gtkai ejecuta git (flags inyectados)
+                                         filtra stdout/stderr
+                                         graba gain
+                                                      |
+                                                      v
+                                         Claude recibe salida compacta
+```
+
+Claude no ve el rewrite. El agente llama `git status`; el hook lo sustituye por `gtkai git status`.
+
+### Qué implica (y qué no)
+
+| Pieza | Cambio |
+|---|---|
+| Plugin | Registra `PreToolUse` (matcher `Bash`) además de `PostToolUse`. El plugin sigue siendo quien configura Claude Code. |
+| Binario | Pasa a ser proxy CLI: `gtkai git status`, `gtkai ls`, `gtkai hook-pre`. Ejecuta el comando real. |
+| `Rewrite()` | Deja de ser código muerto: inyecta flags (`git status --porcelain -b`, `go test -json`, `git log --pretty=…`). |
+| `FilterOutput` | Se aplica **dentro** del proxy, sobre la salida que gtkai acaba de capturar. |
+| `PostToolUse` | Se queda para `Read`, `mcp__*`, y más adelante `Grep`/`Glob`. No es el camino de Bash. |
+| Fases del repo | Siguen dos piezas: plugin registra hooks; binario filtra y ahora también ejecuta. No se mezclan. |
+
+No copiar de rtk: `rtk init` multi-agente, motor TOML, `discover`/`learn`, telemetría, `tee` a disco. gtk sigue siendo heurística (truncado, agrupación, stripping).
+
+### Alcance de esta fase
+
+Un PR (o pocos) que deje el camino de rtk funcionando para **un** comando de punta a punta, y la infraestructura para el resto.
+
+1. **`gtkai hook-pre`**: lee el JSON de PreToolUse, reescribe `tool_input.command` cuando el binario está registrado, escribe `updatedInput`. Si no hay módulo, pasa.
+2. **Plugin**: `PreToolUse` + script `gtkai-pre-tool-use.sh`. Matcher `Bash`. Timeout corto.
+3. **CLI proxy**: `gtkai <modulo> [args…]` ejecuta el comando, captura stdout+stderr, filtra, imprime, propaga exit code, graba `gain`.
+4. **Detección de comando**: no basta la primera palabra. Cubrir `/usr/bin/git`, `sudo git`, `git -C dir status`, `VAR=1 git status`. Pipelines: reescribir solo el último eslabón si es seguro (`grep`/`rg`); si no, pasar.
+5. **Guardia `never_worse`**: si el filtrado estima más tokens que el crudo, imprimir el crudo.
+6. **Strip ANSI** antes de parsear.
+7. **Primer comando extremo a extremo: `git status`**. Rewrite a `gtkai git status`. El módulo inyecta `--porcelain -b` (salvo que el usuario ya pida otro formato) y agrupa por estado.
+
+Criterio de hecho:
+
+- `git status` en Claude Code se reescribe a `gtkai git status` (payload PreToolUse de prueba).
+- `gtkai git status` en terminal produce salida compacta y exit code de git.
+- `gtkai gain` registra esa invocación.
+- Un comando no registrado (`echo hi`) no se toca.
+
+Hasta que esto no esté verde, no se añaden módulos nuevos. El post-filtro actual de Bash se retira cuando el proxy cubra los módulos existentes; mientras tanto puede convivir para no dejar un agujero.
+
+---
+
+## 2. Correcciones — módulos que ya existen y no cumplen
+
+Con el proxy, estos módulos pueden inyectar flags. Eso es lo que hoy no pueden hacer y por eso fallan.
+
+| Módulo | Problema actual | Corrección con rewrite |
 |---|---|---|
-| Modelo | Post-filtro heurístico | Proxy CLI: ejecuta el binario real y comprime |
-| Hook | `PostToolUse` (`Bash\|mcp__.*\|Read`) | `PreToolUse` rewrite transparente |
-| `Rewrite()` | Existe en la interfaz; **nunca se llama** | Núcleo del producto |
-| Alcance | Claude Code | Claude, Cursor, Copilot, Gemini, Codex, Windsurf, … |
-| Comandos | find, ls, git (4 subcmds), grep, rg, Read, MCP | 100+ + ~60 filtros TOML |
-| Métrica | `bytes/4`, `gain` **no está cableado al hook** | SQLite en cada ejecución |
-| Guardia | Algunos módulos comparan `len(filtered) >= len(raw)` | `never_worse` global por tokens estimados |
-| stderr | Se ignora | Se fusiona o se deja pasar según el módulo |
-| Pipelines | Solo la primera palabra del comando | Reescribe el último eslabón si es seguro |
+| `ls` | Reformatea y **sigue listando cada nombre**. El test `TestLsLargeOutputNotModified` documenta que nunca acorta. | Ejecutar `ls` con flags estables (`-la`, `LC_ALL=C`), compactar a recuentos + N ejemplos, omitir dirs de ruido. |
+| `git status` | Espera porcelain. Claude lanza formato largo; el parser no entra. | Cubierto en la fase principal. |
+| `git diff` | Corte ciego a 300 líneas. | `--stat` + hunks compactos (tope por hunk), strip de `index`/`+++`. |
+| `git log` | Corta 50 entradas verbose. | Inyectar `%h %s (%ar) <%an>` si el usuario no pasó `--pretty`/`--oneline`; default 10; respetar `-n`. |
+| `git branch` | Parcial. | Filtrar remotes; cap. |
+| `grep` | 200 líneas crudas + cabecera. | Mismo contrato que `rg`: grupo por fichero, caps. Parser compartido. |
+| `rg` | Casi alineado. | Flags `-A/-B`, pipelines. |
+| `find` | 100 paths + extensión. | Agrupar por directorio, cap más bajo, no inflar salidas pequeñas. |
+| `Read` | Solo líneas `//` y `#`. | Bloques `/* */`, más extensiones. Sin modo “solo firmas” (agresivo de rtk: peligroso). |
+| `gain` | SQLite listo, hook no graba. | Cableado en el runner del proxy (fase 1). |
 
-gtk debe seguir siendo filtrado heurístico (truncado, agrupación, stripping). No hay que importar “compresión semántica” ni el motor TOML de rtk hasta que el núcleo esté sólido.
+Añadir al mismo bloque, porque son el mismo camino Bash que rtk reescribe a `read`:
 
-Copiar el proxy `PreToolUse` cambiaría el contrato del proyecto (el binario pasaría a ejecutar comandos). Es una decisión de producto, no un port mecánico.
+- `git show`, `git add`/`commit`/`push`/`pull`/`fetch`/`stash` (confirmación, sin progress).
+- `cat` / `head` / `tail` → `gtkai read` (reutiliza `read.FilterContent`).
+- `tree`.
+
+Tools nativas (siguen en `PostToolUse`, rtk no puede):
+
+- `Grep`, `Glob`.
+- MCP: mantener truncado + passthrough; compactar JSON cuando el body sea texto.
+
+Criterio de hecho: fixtures de status largo, diff unificado, log verbose, `ls -la`. Ahorro medible en todos, incluido `ls`. `go test ./...` en verde.
 
 ---
 
-## Qué hace ya gtk (y dónde falla)
+## 3. Resto — runners y ecosistema
 
-### Cubierto, con huecos
+Solo después del proxy y de las correcciones. Aquí el rewrite sí inyecta flags (`go test -json`).
 
-| Módulo | Qué hace gtk | Qué hace rtk | Hueco |
+### Runners (mucho ruido, ~90% en rtk)
+
+| Módulo | Comandos | Rewrite | Filtro |
 |---|---|---|---|
-| `find` | Corta a 100 líneas, agrupa por extensión | Agrupa por directorio, tope 50, ignora ruido (`node_modules`, …) | gtk muestra casi todos los paths; el ahorro real es bajo |
-| `ls` | Agrupa por extensión **y sigue listando cada nombre** | Árbol compacto, tamaños, octal, omite dirs de ruido | El test `TestLsLargeOutputNotModified` documenta que **el reformateo nunca es más corto**. El módulo no ahorra tokens |
-| `grep` | Corta a 200 líneas + cabecera de recuento | Agrupa por fichero, tope por fichero, tee del resto | gtk deja las 200 líneas enteras; rtk colapsa |
-| `rg` | Agrupa por fichero, 10 matches/fichero, 20 ficheros | Mismo enfoque, más fiel a flags y contexto `-A/-B` | gtk está más cerca; faltan contexto y pipelines |
-| `git diff` | Corta a 300 líneas crudas | `--stat` + hunks compactos (100 líneas/hunk), strip de cabeceras `index`/`+++` | gtk no compacta: solo trunca el final |
-| `git log` | Corta a 50 entradas del formato verbose | Inyecta `%h %s (%ar) <%an>`, default 10, sin merges | Sin rewrite, gtk puede compactar el texto verbose a una línea/commit |
-| `git status` | Espera porcelain (` M`, `??`) | Inyecta `--porcelain -b` y agrupa por estado | Claude suele lanzar `git status` largo. El parser de gtk **no lo entiende** y a menudo no filtra |
-| `git branch` | Lista local + current | Filtra remotes, caps | Parcialmente alineado |
-| `Read` | Quita líneas `//` y `#`, colapsa blancos, corta a 300 | Niveles none/minimal/aggressive; bloques `/* */`; firmas en aggressive | gtk no quita bloques ni docstrings; no hay modo firmas |
-| MCP | Trunca a 3000 chars + passthrough por env | No aplica (no es PostToolUse) | Ventaja de gtk |
+| `gotest` | `go test`, `go build`, `go vet` | `go test -json` salvo `-bench` o `-json` ya presente | paquetes `ok` → recuento; `FAIL` completo |
+| `cargo` | `test`, `build`, `clippy`, `check` | según subcomando | errores/fallos; colapsar `Compiling` |
+| `pytest` | `pytest`, `python -m pytest` | — | fallos + traceback corto |
+| `npmtest` | `npm test`, `pnpm test`, `npx vitest`/`jest` | — | fallos; strip ANSI |
+| `docker` | `ps`, `images`, `logs`, `compose ps/logs` | — | columnas mínimas; logs con tope |
 
-### Declarado y muerto
+Criterio: fixture `go test` con 40 paquetes ok + 1 FAIL; el agente ve el FAIL y un recuento de los ok.
 
-- `Module.Rewrite`: todos los módulos devuelven `(nil, false)`. No hay `PreToolUse`.
-- `gtkai gain`: SQLite listo; el hook **no graba** `tokens_in`/`tokens_out`. El dashboard siempre está vacío en uso real.
+### Ecosistema, solo si `gain` lo pide
 
-### Tools de Claude Code que gtk no toca
+No abrir módulos “por si acaso”:
 
-rtk no puede. gtk sí podría, porque ya vive en `PostToolUse`:
+- linters: `ruff check`, `tsc`, `eslint`/`biome`, `golangci-lint`
+- `gh pr`/`issue`/`run`
+- `kubectl get`/`logs`
+- `curl` JSON (passthrough si el body no es texto)
 
-- `Grep` (herramienta nativa, no `Bash("grep …")`)
-- `Glob`
-- `WebFetch` / `WebSearch` (truncado defensivo, como MCP)
+Fuera de alcance hasta que el núcleo y los runners cubran una sesión típica: filtros TOML de rtk (`helm`, `pulumi`, `terraform`, `dotnet`, `gradle`, `phpunit`, …), multi-agente, `discover`/`learn`.
 
 ---
 
-## Inventario rtk: qué merece la pena
+## Estado actual vs objetivo
 
-rtk agrupa comandos en ecosistemas. Para gtk, el criterio es **frecuencia en sesiones Claude Code × ruido de stdout**, no paridad de catálogo.
-
-### Alta prioridad (mucho ruido, poco parser)
-
-Aplicable como post-filtro, sin ejecutar el comando:
-
-| Comando | Estrategia rtk | Ahorro declarado | En gtk |
-|---|---|---|---|
-| `git status/diff/log/show/branch` | compact + caps | 70–80% | parcial, débil |
-| `git add/commit/push/pull/fetch/stash` | una línea de confirmación, strip progress | 59–92% | ausente |
-| `ls` / `tree` | recuentos + árbol, sin listar todo | 65–80% | `ls` inútil; `tree` ausente |
-| `cat` / `head` / `tail` | mismo pipeline que `read` | ~70% | ausente (solo tool `Read`) |
-| `grep` / `rg` | agrupar + cap por fichero | ~75% | grep débil; rg ok |
-| `find` | agrupar por dir, cap 50 | ~70% | truncado plano |
-| `go test` / `go build` / `go vet` | fallos only; rtk inyecta `-json` | 75–90% | ausente |
-| `cargo test/build/clippy` | fallos / errores, colapsa ok | 80–90% | ausente |
-| `pytest` | fallos + traceback recortado | ~90% | ausente |
-| `npm test` / `pnpm test` / `vitest` / `jest` | fallos only | 90–99% | ausente |
-| `docker ps/images/logs` | columnas esenciales | ~85% | ausente |
-| `gh pr/issue/run` | vista compacta | 80–87% | ausente |
-
-`go test` es el caso límite: rtk inyecta `-json` en PreToolUse. En PostToolUse se puede parsear la salida texto (`FAIL`, `--- FAIL`, `ok`/`PASS`) y colapsar paquetes verdes. Menos preciso, suficiente, y no exige proxy.
-
-### Media prioridad (útil si el usuario trabaja en ese stack)
-
-`ruff`, `tsc`, `eslint`/`biome`, `golangci-lint`, `kubectl get/logs`, `curl` (JSON compacto, no binarios), `playwright`, `next build`, `prisma`, `make`.
-
-### Baja prioridad / no copiar ahora
-
-Filtros TOML de rtk (`helm`, `pulumi`, `terraform`, `gcloud`, `phpunit`, `dotnet`, `gradle`, `ansible`, `shopify`, `fail2ban`, …): son decenas de parsers de un solo comando. gtk no tiene DSL; cada uno es un módulo Go. No compensan hasta que el núcleo y los runners cubran el 80% de una sesión típica.
-
-Tampoco: multi-agente (`rtk init --agent cursor|gemini|…`), `discover`/`learn` sobre historial de Claude, permisos de rewrite, telemetría, `tee` a disco para recuperar output truncado. Son producto rtk, no token-killers del hook actual.
-
----
-
-## Fases propuestas
-
-Cada fase es un PR (o pocos PRs) independiente. No subir versión hasta que una fase esté usable. No mezclar proxy PreToolUse con filtros nuevos en el mismo cambio.
-
-### Fase 0 — Cimientos (sin esto el resto miente)
-
-Objetivo: que cada filtro sea seguro, medible y reciba el comando real.
-
-1. **Guardia global `never_worse`**: si el filtrado estima más tokens que el crudo, devolver el crudo. Hoy `find` y `grep` pueden alargar salidas pequeñas; `ls` siempre alarga.
-2. **Pasar args al módulo**: `FilterOutput(output string)` no basta. git ya hace un caso especial. El registry debería exponer `FilterOutput(args []string, output string)` para que `git log --oneline` no se trate igual que `git log`.
-3. **stderr**: el hook solo lee `stdout`. `go test`, `cargo`, `git` y linters tiran ruido (o fallos) por stderr. Concatenar o filtrar ambos.
-4. **Strip ANSI** antes de parsear.
-5. **Cablear `gain` en el hook**: un `Record` por invocación filtrada. Sin esto no hay forma de saber si las fases siguientes sirven.
-6. **Detección de comando**: primera palabra es frágil (`cd foo && git status`, `sudo git`, `/usr/bin/git`, `git -C dir status`). Extraer el binario real y el subcomando git, como hace rtk con opciones globales.
-
-Criterio de hecho: `gtkai gain` muestra datos tras una sesión; ningún filtro empeora el recuento estimado.
-
-### Fase 1 — Paridad de los módulos que ya existen
-
-Máximo ahorro por línea de código: gtk ya intercepta estos comandos.
-
-1. **`ls`**: dejar de listar todos los nombres. Recuento por extensión + dirs; mostrar N ejemplos como mucho. Si no se puede acortar, no reescribir (el test actual lo deja por escrito).
-2. **`git status`**: parsear formato largo *y* porcelain. Agrupar staged / modified / untracked / deleted. Quitar hints `(use "git …")`.
-3. **`git diff` / `git show`**: compactar hunks (cabecera de fichero + `+/-` + tope por hunk), no un corte ciego a 300 líneas.
-4. **`git log`**: compactar cada commit a `hash subject (fecha) <autor>`; respetar `--oneline`/`--format` del usuario (no empeorar lo que ya es corto).
-5. **`git add/commit/push/pull/fetch`**: una línea de resultado; tirar progress `Enumerating objects`.
-6. **`grep`**: mismo contrato que `rg` (grupo por fichero, caps). Compartir parser.
-7. **`find`**: agrupar por directorio; cap más agresivo; no inflar salidas pequeñas.
-8. **`Read` + `cat`/`head`/`tail` por Bash**: bloques `/* */`, más extensiones, colapso de blancos. `cat`/`head`/`tail` reutilizan `read.FilterContent`.
-9. **Tools nativas `Grep` y `Glob`**: extender el matcher del plugin. rtk no puede; gtk sí.
-
-Criterio de hecho: repetir `go test ./internal/hook/...` con fixtures reales (status largo, diff unificado, log verbose, `ls -la`). Ahorro medible en todos, incluido `ls`.
-
-### Fase 2 — Runners (el 90% que gtk no toca)
-
-Un módulo por familia, todos post-filtro, fallos only:
-
-| Módulo | Comandos | Regla |
+| | gtk-ai 0.3.3 | Objetivo |
 |---|---|---|
-| `gotest` | `go test`, `go build`, `go vet` | paquetes `ok` → recuento; dejar `FAIL` + output del test |
-| `cargo` | `cargo test`, `build`, `clippy`, `check` | errores/fallos; colapsar `Compiling`/`Finished` |
-| `pytest` | `pytest`, `python -m pytest` | fallos + traceback corto; `passed` → recuento |
-| `npmtest` | `npm test`/`run test`, `pnpm test`, `npx vitest`/`jest` | fallos; strip ANSI; colapsar pass |
-| `docker` | `docker ps`, `images`, `logs`, `compose ps/logs` | columnas mínimas; logs con tope |
+| Bash | `PostToolUse` filtra stdout | `PreToolUse` reescribe a `gtkai …`; el binario ejecuta y filtra |
+| `Rewrite()` | Muerto | Inyecta flags |
+| `Read` / MCP | `PostToolUse` | Se mantiene |
+| `gain` | No graba | Cada ejecución del proxy |
+| Comandos | find, ls, git (4), grep, rg, Read, MCP | Lo mismo, corregido, luego runners |
 
-Opcional en la misma fase: `tree` (cap de profundidad + ignore de ruido).
-
-No inyectar `-json` todavía. Parsear texto. Si más adelante hay PreToolUse, se mejora `go test` sin cambiar el filtro.
-
-Criterio de hecho: fixture de `go test ./...` con 40 paquetes ok + 1 FAIL; el agente ve el FAIL completo y un recuento de los ok.
-
-### Fase 3 — Decisión de producto: ¿PreToolUse?
-
-Hasta aquí gtk sigue siendo post-filtro. Para igualar rtk en `go test -json`, `git status --porcelain` y `cat`→filtro de read **antes** de generar output enorme, hace falta rewrite.
-
-Opciones:
-
-- **A (recomendada a corto plazo)**: no. Seguir en PostToolUse. El ahorro de las fases 0–2 cubre la mayoría de sesiones sin ejecutar comandos desde gtkai.
-- **B**: hook `PreToolUse` que reescribe `git status` → `git status --porcelain -b`, `go test` → `go test -json`, etc., **sin** que gtkai ejecute el binario. El plugin reescribe args; el filtro post sigue igual. Encaja con “el binario no configura Claude Code”: el rewrite vive en el plugin o en `gtkai hook-pre` que solo imprime JSON `updatedInput`.
-- **C**: proxy estilo rtk (`gtkai git status` ejecuta git). Rompe el modelo actual. No hacerlo salvo decisión explícita.
-
-Si se elige B: implementar `Rewrite` de verdad, registrar `PreToolUse` en `plugin/hooks/hooks.json`, y no mezclar con filtros nuevos.
-
-### Fase 4 — Ecosistema, solo si el `gain` lo pide
-
-Cuando `gtkai gain` muestre qué comandos aparecen de verdad:
-
-- linters: `ruff check`, `tsc`, `eslint`/`biome`, `golangci-lint` (agrupar por regla/fichero)
-- `gh pr/issue/run`
-- `kubectl get/logs`
-- `curl` JSON (estructura + tope; **passthrough si el body no es texto**)
-- MCP: truncado por tipo (JSON compacto vs corte a 3000 chars)
-
-No abrir un módulo “por si acaso”. Cada uno exige parser y tests de fixture.
-
----
-
-## Qué gtk ya hace mejor que rtk (mantener)
-
-- Filtrado de `Read` nativo de Claude Code.
-- Truncado MCP + `GTK_MCP_PASSTHROUGH_PATTERNS` + `gtkai mcp-scan`.
-- Plugin de dos piezas (binario ≠ config de Claude), más simple de auditar.
-- Superficie pequeña: se puede endurecer el núcleo antes de inflar el catálogo.
-
-No diluir esto con `rtk init` multi-agente ni con 60 TOML.
+El filtrado sigue siendo heurístico. No hay compresión semántica.
 
 ---
 
 ## Riesgos
 
-- **Post-filtro no puede inyectar flags.** `go test -json` y `git status --porcelain` no ocurrirán solos. Los parsers tienen que aceptar la salida que Claude pide.
-- **Pipelines y `&&`.** Filtrar `find … | head` como `find` puede romper el significado. Fase 0: o se detecta pipe y se pasa, o se filtra solo el último comando seguro (`grep`/`rg`).
-- **Falsos positivos en test runners.** Colapsar un `PASS` que esconde un panic. Conservar cualquier línea que no se clasifique.
-- **`never_worse` vs reformateo.** Un status de 3 ficheros no debe convertirse en un párrafo más largo.
-- **Read agresivo.** Quitar cuerpos de función (modo aggressive de rtk) es heurística peligrosa. En gtk, dejarlo fuera de Fase 1.
+- **Contrato de hooks.** Un `PreToolUse` que escriba mal el JSON desactiva el hook (Claude Code lo silencia). Tests con payload real, stdout solo JSON.
+- **Pipelines y `&&`.** Reescribir `find … \| head` como `find` rompe el significado. Solo último eslabón seguro, o pasar.
+- **Comandos de escritura.** `git commit`, `git push`, `docker run` no pueden quedar a medias. El proxy propaga stdin/TTY cuando el comando no es de solo lectura; si no se puede, no reescribir.
+- **Doble filtro.** Mientras convivan Pre y Post sobre Bash, la salida se puede filtrar dos veces y alargar. Retirar el Post de Bash en cuanto el proxy cubra el módulo.
+- **`never_worse`.** Un status de 3 ficheros no debe convertirse en un párrafo más largo.
+- **Falsos positivos en runners.** Conservar cualquier línea que no se clasifique.
 
 ---
 
-## Orden de implementación sugerido
+## Orden de PRs
 
-Si se valida este roadmap, el primer código sería Fase 0 + `ls`/`git status`/`git diff` de Fase 1. Eso arregla módulos que hoy no cumplen su README, antes de añadir `go test`.
+1. Proxy PreToolUse + `git status` extremo a extremo (sección 1).
+2. Correcciones de módulos actuales + `cat`/`head`/`tail`/`tree` + git restante (sección 2).
+3. Runners (sección 3).
+4. Ecosistema según `gain`.
 
-No bump de versión hasta cerrar Fase 0. El tag tiene que coincidir con todos los ficheros de versión (`cmd/gtkai/main.go`, plugin json, `mcpscan`, README).
+No bump de versión hasta que el PR 1 esté usable. El tag tiene que coincidir con todos los ficheros de versión (`cmd/gtkai/main.go`, plugin json, `mcpscan`, README).

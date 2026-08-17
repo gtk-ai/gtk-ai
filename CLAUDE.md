@@ -4,10 +4,12 @@
 
 Two independent phases:
 
-1. **Go binary** (`gtkai`): filtering and token reduction logic.
-2. **Claude Code plugin**: registers hooks, templates, and the include in the global `CLAUDE.md`.
+1. **Go binary** (`gtkai`): command proxy and token reduction. PreToolUse rewrites `git status` to `gtkai git status`; the binary runs the real command, injects flags, and filters output.
+2. **Claude Code plugin**: registers hooks (`PreToolUse` for Bash, `PostToolUse` for Read/MCP), templates, and the include in the global `CLAUDE.md`.
 
 Never collapse both phases into one. The plugin depends on the binary. The binary does not configure Claude Code.
+
+Target flow and remaining work: `ROADMAP.md`. Current `0.3.3` still filters Bash in `PostToolUse` only; `Rewrite()` is unused. That is the gap to close first.
 
 ## Versions
 
