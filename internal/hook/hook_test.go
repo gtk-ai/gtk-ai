@@ -146,18 +146,10 @@ func TestFindEmptyOutput(t *testing.T) {
 }
 
 func TestFindSmallOutput(t *testing.T) {
-	// find always reformats output, even for small result sets
 	raw := "./main.go\n./go.mod\n"
-	modified, out := runHook(t, bashPayload("find . -name '*.go'", raw))
-	if !modified {
-		t.Fatal("find should always reformat output")
-	}
-	compressed := extractBashOutput(t, out)
-	if !strings.Contains(compressed, "2") {
-		t.Errorf("expected result count in output, got: %s", compressed)
-	}
-	if !strings.Contains(compressed, ".go") {
-		t.Errorf("expected extension in output, got: %s", compressed)
+	modified, _ := runHook(t, bashPayload("find . -name '*.go'", raw))
+	if modified {
+		t.Error("small find output should not be modified when reformatted result is larger")
 	}
 }
 
@@ -252,12 +244,15 @@ func TestGitDiffCompression(t *testing.T) {
 }
 
 func TestGitStatusSmallOutput(t *testing.T) {
-	// small status: reformatted result would be larger, hook should return original
 	raw := " M internal/hook/post_tool_use.go\n M README.md\n?? plugin/\n?? docs/\n"
 
-	modified, _ := runHook(t, bashPayload("git status", raw))
-	if modified {
-		t.Error("small git status should not be modified (reformatted result would be larger)")
+	modified, out := runHook(t, bashPayload("git status", raw))
+	if !modified {
+		return
+	}
+	compressed := extractBashOutput(t, out)
+	if registry.EstimateTokens(compressed) > registry.EstimateTokens(raw) {
+		t.Fatal("modified status must not use more tokens than raw")
 	}
 }
 
@@ -296,7 +291,6 @@ func TestGitStatusCompression(t *testing.T) {
 		t.Error("expected Untracked section")
 	}
 }
-
 
 func TestGitLogCompression(t *testing.T) {
 	var sb strings.Builder

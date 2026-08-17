@@ -9,7 +9,7 @@ Two independent phases:
 
 Never collapse both phases into one. The plugin depends on the binary. The binary does not configure Claude Code.
 
-Target flow and remaining work: `ROADMAP.md`. Current `0.3.3` still filters Bash in `PostToolUse` only; `Rewrite()` is unused. That is the gap to close first.
+Target flow and remaining work: `ROADMAP.md`. `0.4.0` rewrites registered Bash commands in `PreToolUse` (`git status` → `gtkai git status`). `PostToolUse` still filters Read, MCP, and Bash commands that were not rewritten.
 
 ## Versions
 
