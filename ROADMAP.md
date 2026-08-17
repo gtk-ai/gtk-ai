@@ -73,14 +73,14 @@ With the proxy, these modules can inject flags. That is what they cannot do toda
 
 | Module | Current problem | Fix with rewrite |
 |---|---|---|
-| `ls` | Reformats and **still lists every name**. `TestLsLargeOutputNotModified` documents that it never shortens. | Run `ls` with stable flags (`-la`, `LC_ALL=C`), compact to counts + N samples, skip noise dirs. |
+| `ls` | Done in `0.4.0`: `-l` + `LC_ALL=C`, `-a` only if requested, counts + samples, noise dirs skipped. | — |
 | `git status` | Expects porcelain. Claude runs the long format; the parser never matches. | Covered in the primary phase. |
-| `git diff` | Blind cut at 300 lines. | `--stat` + compact hunks (per-hunk cap), strip `index`/`+++`. |
-| `git log` | Cuts 50 verbose entries. | Inject `%h %s (%ar) <%an>` if the user did not pass `--pretty`/`--oneline`; default 10; honor `-n`. |
+| `git diff` | Done in `0.4.0`: strip `index`/`+++`/`---`, cap per hunk. | — |
+| `git log` | Done in `0.4.0`: inject `%h %s (%ar) <%an>` and `-10`; honor `--pretty`/`--oneline`/`-n`. | — |
 | `git branch` | Partial. | Filter remotes; cap. |
-| `grep` | 200 raw lines + a header. | Same contract as `rg`: group by file, caps. Shared parser. |
-| `rg` | Almost aligned. | `-A/-B` flags, pipelines. |
-| `find` | 100 paths + extension. | Group by directory, lower cap, do not inflate small outputs. |
+| `grep` | Done in `0.4.0`: same grouping as `rg`; injects `-nH`. | — |
+| `rg` | Grouping shared with `grep`. Pipelines rewrite the last stage. | — |
+| `find` | Done in `0.4.0`: group by directory, cap 50, small outputs unchanged. | — |
 | `Read` | Only `//` and `#` lines. | `/* */` blocks, more extensions. No “signatures only” mode (rtk aggressive: unsafe). |
 | `gain` | SQLite is ready; the hook never records. | Wired in the proxy runner (phase 1). |
 
@@ -130,13 +130,13 @@ Out of scope until the core and the runners cover a typical session: rtk TOML fi
 
 ## Current vs target
 
-| | gtk-ai 0.3.3 | Target |
+| | gtk-ai 0.4.0 | Remaining |
 |---|---|---|
-| Bash | `PostToolUse` filters stdout | `PreToolUse` rewrites to `gtkai …`; the binary runs and filters |
-| `Rewrite()` | Dead | Injects flags |
-| `Read` / MCP | `PostToolUse` | Kept |
-| `gain` | Does not record | Every proxy execution |
-| Commands | find, ls, git (4), grep, rg, Read, MCP | The same, corrected, then runners |
+| Bash | `PreToolUse` rewrites registered commands to `gtkai …`; the binary runs and filters | Drop Bash `PostToolUse` once coverage is trusted |
+| `Rewrite()` | Injects flags for `git status`, `git log`, `ls`, `grep` | Runners (`go test -json`) |
+| `Read` / MCP | `PostToolUse` | `/* */` on Read; native `Grep`/`Glob` |
+| `gain` | Every proxy execution | — |
+| Commands | find, ls, git (status/log/diff/branch), grep, rg, Read, MCP | `cat`/`head`/`tail`/`tree`, then runners |
 
 Filtering stays heuristic. No semantic compression.
 
