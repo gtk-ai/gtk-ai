@@ -28,6 +28,9 @@ func FilterContent(path, content string) (string, bool) {
 	lang := detectLang(path)
 	hasPrefix := detectLinePrefix(lines)
 
+	if lang == langSlash {
+		lines = stripBlockComments(lines, hasPrefix)
+	}
 	lines = stripCommentLines(lines, lang, hasPrefix)
 	lines = collapseBlankLines(lines, hasPrefix)
 
@@ -60,12 +63,12 @@ const (
 func detectLang(path string) language {
 	ext := strings.ToLower(filepath.Ext(path))
 	switch ext {
-	case ".go", ".rs", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".c", ".h", ".cpp", ".cc", ".java":
+	case ".go", ".rs", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".c", ".h", ".cpp", ".cc", ".java", ".css", ".scss", ".vue", ".svelte":
 		return langSlash
 	case ".py", ".pyw", ".sh", ".bash", ".zsh", ".rb":
 		return langHash
 	case ".json", ".jsonc", ".yaml", ".yml", ".toml", ".md", ".markdown",
-		".txt", ".html", ".css", ".sql", ".lock", ".env":
+		".txt", ".html", ".sql", ".lock", ".env":
 		return langData
 	default:
 		return langUnknown
@@ -175,6 +178,47 @@ func stripCommentLines(lines []string, lang language, hasPrefix bool) []string {
 		}
 	}
 	return result
+}
+
+func stripBlockComments(lines []string, hasPrefix bool) []string {
+	inBlock := false
+	out := make([]string, 0, len(lines))
+	for _, line := range lines {
+		content := line
+		prefix := ""
+		if hasPrefix {
+			content = contentOf(line)
+			prefix = line[:len(line)-len(content)]
+		}
+		var kept strings.Builder
+		i := 0
+		for i < len(content) {
+			if inBlock {
+				end := strings.Index(content[i:], "*/")
+				if end < 0 {
+					i = len(content)
+					break
+				}
+				i += end + 2
+				inBlock = false
+				continue
+			}
+			start := strings.Index(content[i:], "/*")
+			if start < 0 {
+				kept.WriteString(content[i:])
+				break
+			}
+			kept.WriteString(content[i : i+start])
+			i += start + 2
+			inBlock = true
+		}
+		if kept.Len() > 0 {
+			out = append(out, prefix+kept.String())
+		} else if !inBlock && strings.TrimSpace(content) != "" {
+			out = append(out, line)
+		}
+	}
+	return out
 }
 
 func collapseBlankLines(lines []string, hasPrefix bool) []string {

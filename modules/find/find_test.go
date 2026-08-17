@@ -14,7 +14,7 @@ func TestFilterGroupsByDirectory(t *testing.T) {
 		fmt.Fprintf(&sb, "./src/module_%02d/util.go\n", i)
 	}
 	raw := sb.String()
-	out := m.FilterOutput(nil, raw)
+	out := m.FilterOutput(nil, raw, 0)
 	if out == raw {
 		t.Fatal("expected grouped output")
 	}
@@ -32,14 +32,14 @@ func TestFilterGroupsByDirectory(t *testing.T) {
 func TestFilterSmallUnchanged(t *testing.T) {
 	m := &Module{}
 	raw := "./main.go\n./go.mod\n"
-	if got := m.FilterOutput(nil, raw); got != raw {
+	if got := m.FilterOutput(nil, raw, 0); got != raw {
 		t.Fatalf("got %q", got)
 	}
 }
 
 func TestFilterEmptyUnchanged(t *testing.T) {
 	m := &Module{}
-	if got := m.FilterOutput(nil, ""); got != "" {
+	if got := m.FilterOutput(nil, "", 0); got != "" {
 		t.Fatalf("got %q", got)
 	}
 }

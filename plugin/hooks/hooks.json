@@ -1,5 +1,5 @@
 {
-  "description": "gtk-ai hooks: PreToolUse rewrites Bash commands to gtkai; PostToolUse filters Read, MCP, and unre-written Bash output",
+  "description": "gtk-ai hooks: PreToolUse rewrites Bash commands to gtkai; PostToolUse filters Read and MCP",
   "hooks": {
     "PreToolUse": [
       {
@@ -15,7 +15,7 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Bash|mcp__.*|Read",
+        "matcher": "mcp__.*|Read",
         "hooks": [
           {
             "type": "command",

@@ -19,7 +19,8 @@ type Module interface {
 
 	// FilterOutput applies heuristic pruning to command output before it reaches the agent.
 	// args are the words after the module name (e.g. ["status", "-sb"] for git).
-	FilterOutput(args []string, output string) string
+	// exitCode is the child exit status; pass -1 when unknown (PostToolUse).
+	FilterOutput(args []string, output string, exitCode int) string
 
 	// TokensBefore estimates tokens in the original output.
 	TokensBefore(output string) int

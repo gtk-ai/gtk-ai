@@ -43,7 +43,7 @@ func TestFilterNamesCompact(t *testing.T) {
 		fmt.Fprintf(&sb, "handler_%02d.go\n", i)
 	}
 	raw := sb.String()
-	out := m.FilterOutput(nil, raw)
+	out := m.FilterOutput(nil, raw, 0)
 	if out == raw {
 		t.Fatal("expected compact listing")
 	}
@@ -67,7 +67,7 @@ func TestFilterLongListing(t *testing.T) {
 	sb.WriteString("drwxr-xr-x 2 user staff 64 Jan 1 12:00 src\n")
 	sb.WriteString("drwxr-xr-x 2 user staff 64 Jan 1 12:00 node_modules\n")
 	raw := sb.String()
-	out := m.FilterOutput([]string{"-l"}, raw)
+	out := m.FilterOutput([]string{"-l"}, raw, 0)
 	if strings.Contains(out, "node_modules") {
 		t.Fatalf("noise dir leaked: %s", out)
 	}
@@ -85,7 +85,7 @@ func TestFilterLongListing(t *testing.T) {
 func TestFilterSmallUnchanged(t *testing.T) {
 	m := &Module{}
 	raw := "main.go\ngo.mod\n"
-	if got := m.FilterOutput(nil, raw); got != raw {
+	if got := m.FilterOutput(nil, raw, 0); got != raw {
 		t.Fatalf("small listing must stay raw, got %q", got)
 	}
 }

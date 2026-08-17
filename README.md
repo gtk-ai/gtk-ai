@@ -1,7 +1,7 @@
 # gtk-ai
 
 ![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go&logoColor=white)
-![Version](https://img.shields.io/badge/version-0.4.0-blue?style=flat)
+![Version](https://img.shields.io/badge/version-0.5.0-blue?style=flat)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue?style=flat)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin%20compatible-blueviolet?style=flat)
 ![Build](https://img.shields.io/badge/build-passing-brightgreen?style=flat)
@@ -93,8 +93,10 @@ Each module handles one command. All built-in modules ship with the binary.
 |---|---|---|
 | `find` | `find` | Groups paths by directory, caps shown files, extension summary |
 | `ls` | `ls` | Injects `-l` + `LC_ALL=C` (and `-a` only if the user asked); compact to counts and samples; skips noise dirs |
-| `git` | `git diff/log/status/branch` | `status` injects `--porcelain -b`; `log` injects pretty-format and `-10`; `diff` strips headers and caps hunks |
+| `git` | `git` | status/log/diff/branch/show; write subcommands compact on exit 0; push/pull/fetch inject `-q` |
 | `grep` / `rg` | `grep`, `rg` | Shared grouping by file with per-file and total caps; `grep` injects `-nH` |
+| `cat` / `head` / `tail` | same | Reuses `read.FilterContent` on single-file output |
+| `tree` | `tree` | Entry count + capped listing |
 | `gain` | — | SQLite analytics: recorded on each proxy run |
 
 ## Adding a module
@@ -117,7 +119,7 @@ func (m *Module) Name() string { return "mycommand" }
 
 func (m *Module) Rewrite(args []string) ([]string, bool) { return nil, false }
 
-func (m *Module) FilterOutput(args []string, output string) string { return output }
+func (m *Module) FilterOutput(args []string, output string, exitCode int) string { return output }
 
 func (m *Module) TokensBefore(output string) int { return registry.EstimateTokens(output) }
 
@@ -146,8 +148,8 @@ To identify which tools to exempt, check the tool names returned by your MCP ser
 
 ```text
 gtkai hook-pre      PreToolUse handler — rewrites Bash commands to gtkai
-gtkai hook-post     PostToolUse handler — reads stdin JSON, writes filtered output
-gtkai git status    Proxy: run a registered command through gtkai (`ls`, `find`, `grep`, `rg`, `git`)
+gtkai hook-post     PostToolUse handler — filters Read and MCP only
+gtkai git status    Proxy: run a registered command through gtkai
 gtkai mcp-scan      List MCP server tools, suggest passthrough prefixes
 gtkai gain          Token savings analytics
 gtkai version       Print version
@@ -170,6 +172,8 @@ gtk-ai/
 │   ├── ls/                 # ls output filter
 │   ├── git/                # git subcommand filters
 │   ├── grep/               # grep output filter
+│   ├── readcmd/            # cat/head/tail via read.FilterContent
+│   ├── tree/               # tree output filter
 │   └── gain/               # SQLite token savings analytics
 └── plugin/
     ├── hooks/              # Claude plugin hook registration

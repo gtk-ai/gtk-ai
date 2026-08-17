@@ -39,7 +39,7 @@ func (m *Module) Rewrite(args []string) ([]string, bool) {
 	return append(extra, args...), true
 }
 
-func (m *Module) FilterOutput(_ []string, output string) string {
+func (m *Module) FilterOutput(_ []string, output string, _ int) string {
 	return matchgroup.Format(output)
 }
 
