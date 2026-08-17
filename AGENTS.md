@@ -9,7 +9,7 @@ Two independent phases:
 
 Never collapse both phases into one. The plugin depends on the binary. The binary does not configure Claude Code.
 
-Target flow and remaining work: `ROADMAP.md`. `0.4.0` rewrites registered Bash commands in `PreToolUse` (`git status` → `gtkai git status`, same for `ls`/`find`/`grep`/`rg`). The proxy injects compact flags and filters stdout. `PostToolUse` still filters Read, MCP, and Bash commands that were not rewritten.
+Target flow and remaining work: `ROADMAP.md`. `0.5.0` completes §2: PreToolUse proxy for registered Bash commands; `PostToolUse` only for Read and MCP.
 
 ## Versions
 

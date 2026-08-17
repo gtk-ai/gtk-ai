@@ -47,7 +47,7 @@ func Run(name string, args []string) int {
 	elapsed := time.Since(start)
 
 	stripped := text.StripANSI(execOut)
-	filtered := mod.FilterOutput(execArgs, stripped)
+	filtered := mod.FilterOutput(execArgs, stripped, execCode)
 	shown := registry.NeverWorse(rawOut, filtered)
 
 	if _, werr := os.Stdout.WriteString(shown); werr != nil {

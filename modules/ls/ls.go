@@ -58,7 +58,7 @@ func (m *Module) Rewrite(args []string) ([]string, bool) {
 	return out, true
 }
 
-func (m *Module) FilterOutput(args []string, output string) string {
+func (m *Module) FilterOutput(args []string, output string, _ int) string {
 	showAll := wantsAll(args)
 	if isLongListing(output) {
 		return compactLong(output, showAll)

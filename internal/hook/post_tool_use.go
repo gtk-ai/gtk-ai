@@ -157,7 +157,7 @@ func filterBashOutput(command, output string) (string, bool) {
 	}
 
 	stripped := text.StripANSI(output)
-	filtered := mod.FilterOutput(fields[1:], stripped)
+	filtered := mod.FilterOutput(fields[1:], stripped, -1)
 	shown := registry.NeverWorse(output, filtered)
 	return shown, shown != output
 }

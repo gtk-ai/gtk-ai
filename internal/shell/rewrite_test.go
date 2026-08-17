@@ -7,7 +7,9 @@ import (
 	_ "github.com/jmeiracorbal/gtk-ai/modules/git"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/grep"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/ls"
+	_ "github.com/jmeiracorbal/gtk-ai/modules/readcmd"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/rg"
+	_ "github.com/jmeiracorbal/gtk-ai/modules/tree"
 )
 
 func TestRewriteGitStatus(t *testing.T) {
@@ -91,6 +93,9 @@ func TestRewriteRegisteredModules(t *testing.T) {
 		{"find . -name '*.go'", "gtkai find . -name '*.go'"},
 		{"grep -n foo src", "gtkai grep -n foo src"},
 		{"rg Error src", "gtkai rg Error src"},
+		{"cat main.go", "gtkai cat main.go"},
+		{"head -n 10 main.go", "gtkai head -n 10 main.go"},
+		{"tree -L 2", "gtkai tree -L 2"},
 	}
 	for _, tc := range cases {
 		got, ok := Rewrite(tc.in, "gtkai")

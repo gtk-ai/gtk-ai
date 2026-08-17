@@ -42,7 +42,7 @@ func TestFilterGroupsLikeRg(t *testing.T) {
 		}
 	}
 	raw := sb.String()
-	out := m.FilterOutput(nil, raw)
+	out := m.FilterOutput(nil, raw, 0)
 	if out == raw {
 		t.Fatal("expected grouped output")
 	}

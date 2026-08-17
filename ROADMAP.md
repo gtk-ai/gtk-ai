@@ -1,6 +1,6 @@
 # Roadmap: gtk-ai vs rtk 0.42.4
 
-Compared against [rtk-ai/rtk](https://github.com/rtk-ai/rtk) `0.42.4` (`ba7a9ce`). gtk-ai is at `0.4.0`.
+Compared against [rtk-ai/rtk](https://github.com/rtk-ai/rtk) `0.42.4` (`ba7a9ce`). gtk-ai is at `0.5.0`.
 
 **Product decision (2026-08-17):** gtk follows the same path as rtk. It rewrites the command **before** execution (`PreToolUse` → `git status` becomes `gtkai git status`). gtkai runs the real binary, injects flags, and filters the output. Post-filtering remains only for Claude Code native tools that do not go through Bash (`Read`, MCP, `Grep`, `Glob`).
 
@@ -77,18 +77,18 @@ With the proxy, these modules can inject flags. That is what they cannot do toda
 | `git status` | Expects porcelain. Claude runs the long format; the parser never matches. | Covered in the primary phase. |
 | `git diff` | Done in `0.4.0`: strip `index`/`+++`/`---`, cap per hunk. | — |
 | `git log` | Done in `0.4.0`: inject `%h %s (%ar) <%an>` and `-10`; honor `--pretty`/`--oneline`/`-n`. | — |
-| `git branch` | Partial. | Filter remotes; cap. |
+| `git branch` | Done in `0.5.0`: cap local branches; skip remote-tracking `->`. | — |
 | `grep` | Done in `0.4.0`: same grouping as `rg`; injects `-nH`. | — |
 | `rg` | Grouping shared with `grep`. Pipelines rewrite the last stage. | — |
 | `find` | Done in `0.4.0`: group by directory, cap 50, small outputs unchanged. | — |
-| `Read` | Only `//` and `#` lines. | `/* */` blocks, more extensions. No “signatures only” mode (rtk aggressive: unsafe). |
-| `gain` | SQLite is ready; the hook never records. | Wired in the proxy runner (phase 1). |
+| `Read` | Done in `0.5.0`: `/* */` block comments; `.css`/`.vue`/`.svelte`. | Native `Grep`/`Glob` still PostToolUse |
+| `gain` | Wired in the proxy runner (phase 1). | Per-filter `id` when §4 lands |
 
 Add in the same block, because they are the same Bash path rtk rewrites to `read`:
 
-- `git show`, `git add`/`commit`/`push`/`pull`/`fetch`/`stash` (confirmation, no progress).
-- `cat` / `head` / `tail` → `gtkai read` (reuses `read.FilterContent`).
-- `tree`.
+- `git show`, `git add`/`commit`/`push`/`pull`/`fetch`/`stash` — **done in 0.5.0** (compact on exit 0; `-q` on push/pull/fetch).
+- `cat` / `head` / `tail` → proxy modules reusing `read.FilterContent` — **done in 0.5.0**.
+- `tree` — **done in 0.5.0** (entry count + capped listing).
 
 Native tools (stay on `PostToolUse`; rtk cannot do this):
 
@@ -207,14 +207,14 @@ Done when: native `gtkai/gtkai-*` filters use the same registry; install/uninsta
 
 ## Current vs target
 
-| | gtk-ai 0.4.0 | Remaining |
+| | gtk-ai 0.5.0 | Remaining |
 |---|---|---|
-| Bash | `PreToolUse` rewrites registered commands to `gtkai …`; the binary runs and filters | Drop Bash `PostToolUse` once coverage is trusted |
+| Bash | `PreToolUse` rewrites registered commands to `gtkai …`; the binary runs and filters | Bash removed from `PostToolUse` (0.5.0) |
 | Filter identity | Flat `registry.Get("ls")` | Namespaced `author/gtkai-<command>`; active = most recent install |
 | `Rewrite()` | Injects flags for `git status`, `git log`, `ls`, `grep` | Runners (`go test -json`); third-party filters via `filter install` |
 | `Read` / MCP | `PostToolUse` | `/* */` on Read; native `Grep`/`Glob` |
 | `gain` | Every proxy execution | Per-filter attribution by `id` |
-| Commands | find, ls, git (status/log/diff/branch), grep, rg, Read, MCP | §2 remainder, then runners, then filter plugin CLI |
+| Commands | find, ls, git (incl. show/write/stash), grep, rg, cat/head/tail, tree, Read, MCP | Runners; filter plugin registry (§4) |
 
 Filtering stays heuristic. No semantic compression.
 
@@ -235,7 +235,7 @@ Filtering stays heuristic. No semantic compression.
 ## PR order
 
 1. PreToolUse proxy + end-to-end `git status` (section 1) — **done in 0.4.0**.
-2. Corrections to current modules + `cat`/`head`/`tail`/`tree` + remaining git (section 2).
+2. Corrections to current modules + `cat`/`head`/`tail`/`tree` + remaining git (section 2) — **done in 0.5.0**.
 3. Runners (section 3).
 4. Filter plugin registry + install/uninstall/list + migrate natives to `gtkai/gtkai-*` (section 4).
 5. Ecosystem commands as third-party filters according to `gain` (section 3 ecosystem).

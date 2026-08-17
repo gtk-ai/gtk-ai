@@ -17,6 +17,8 @@ const (
 	maxLogUserFmt   = 50
 	maxLogLineWidth = 80
 	maxStatusLines  = 100
+	maxBranchList   = 15
+	maxStashEntries = 20
 	prettyLogFmt    = "%h %s (%ar) <%an>"
 )
 
@@ -42,9 +44,37 @@ func (m *Module) Rewrite(args []string) ([]string, bool) {
 		return out, true
 	case "log":
 		return rewriteLog(globals, rest)
+	case "push", "pull", "fetch":
+		return rewriteQuiet(globals, sub, rest)
 	default:
 		return nil, false
 	}
+}
+
+func rewriteQuiet(globals []string, sub string, rest []string) ([]string, bool) {
+	if hasVerboseFlag(rest) {
+		return nil, false
+	}
+	out := append(append([]string{}, globals...), sub, "-q")
+	out = append(out, rest...)
+	return out, true
+}
+
+func hasVerboseFlag(args []string) bool {
+	for _, a := range args {
+		switch a {
+		case "-v", "-vv", "--verbose", "--progress":
+			return true
+		}
+		if strings.HasPrefix(a, "-") && !strings.HasPrefix(a, "--") {
+			for _, c := range a[1:] {
+				if c == 'v' {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 func rewriteLog(globals, rest []string) ([]string, bool) {
@@ -68,7 +98,7 @@ func rewriteLog(globals, rest []string) ([]string, bool) {
 	return out, true
 }
 
-func (m *Module) FilterOutput(args []string, output string) string {
+func (m *Module) FilterOutput(args []string, output string, exitCode int) string {
 	_, sub, rest, ok := splitGitArgs(args)
 	if !ok {
 		return output
@@ -82,6 +112,12 @@ func (m *Module) FilterOutput(args []string, output string) string {
 		return filterStatus(output)
 	case "branch":
 		return filterBranch(output)
+	case "show":
+		return filterShow(output)
+	case "add", "commit", "push", "pull", "fetch":
+		return filterWrite(sub, output, exitCode)
+	case "stash":
+		return filterStash(rest, output, exitCode)
 	default:
 		return output
 	}
@@ -468,8 +504,107 @@ func filterBranch(output string) string {
 		sb.WriteString(fmt.Sprintf("current: %s\n", current))
 	}
 	if len(branches) > 0 {
-		sb.WriteString(fmt.Sprintf("local (%d): %s\n", len(branches), strings.Join(branches, ", ")))
+		n := len(branches)
+		shown := branches
+		if n > maxBranchList {
+			shown = branches[:maxBranchList]
+			sb.WriteString(fmt.Sprintf("local (%d): %s ... +%d more\n", n, strings.Join(shown, ", "), n-maxBranchList))
+		} else {
+			sb.WriteString(fmt.Sprintf("local (%d): %s\n", n, strings.Join(shown, ", ")))
+		}
 	}
+	result := sb.String()
+	if result == "" {
+		return output
+	}
+	return result
+}
+
+func filterShow(output string) string {
+	if strings.Contains(output, "diff --git") || strings.Contains(output, "@@") {
+		return filterDiff(output)
+	}
+	return capLines(output, maxDiffLines)
+}
+
+func filterWrite(sub, output string, exitCode int) string {
+	if exitCode != 0 {
+		return output
+	}
+	trimmed := strings.TrimSpace(output)
+	if trimmed == "" {
+		return "ok\n"
+	}
+	switch sub {
+	case "add":
+		return "ok\n"
+	case "commit":
+		for _, line := range strings.Split(output, "\n") {
+			line = strings.TrimSpace(line)
+			if !strings.HasPrefix(line, "[") {
+				continue
+			}
+			end := strings.Index(line, "]")
+			if end <= 1 {
+				continue
+			}
+			inner := line[1:end]
+			fields := strings.Fields(inner)
+			if len(fields) >= 2 {
+				return fmt.Sprintf("ok %s\n", fields[1])
+			}
+		}
+		return "ok\n"
+	case "push", "fetch":
+		if len(trimmed) <= 80 {
+			return trimmed + "\n"
+		}
+		return "ok\n"
+	case "pull":
+		for _, line := range strings.Split(output, "\n") {
+			line = strings.TrimSpace(line)
+			if strings.Contains(line, "file changed") || strings.Contains(line, "files changed") {
+				return "ok " + line + "\n"
+			}
+		}
+		return "ok\n"
+	default:
+		return output
+	}
+}
+
+func filterStash(args []string, output string, exitCode int) string {
+	if len(args) == 0 {
+		return output
+	}
+	switch args[0] {
+	case "list":
+		return filterStashList(output)
+	case "push", "pop", "apply", "drop", "clear":
+		return filterWrite("stash", output, exitCode)
+	default:
+		return output
+	}
+}
+
+func filterStashList(output string) string {
+	lines := strings.Split(strings.TrimRight(output, "\n"), "\n")
+	var entries []string
+	for _, l := range lines {
+		l = strings.TrimSpace(l)
+		if l != "" {
+			entries = append(entries, l)
+		}
+	}
+	if len(entries) <= maxStashEntries {
+		return output
+	}
+	var sb strings.Builder
+	for _, e := range entries[:maxStashEntries] {
+		sb.WriteString(e)
+		sb.WriteByte('\n')
+	}
+	sb.WriteString(fmt.Sprintf("... +%d more\n", len(entries)-maxStashEntries))
 	return sb.String()
 }
 
