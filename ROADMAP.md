@@ -1,6 +1,6 @@
 # Roadmap: gtk-ai vs rtk 0.42.4
 
-Compared against [rtk-ai/rtk](https://github.com/rtk-ai/rtk) `0.42.4` (`ba7a9ce`). gtk-ai is at `0.3.3`.
+Compared against [rtk-ai/rtk](https://github.com/rtk-ai/rtk) `0.42.4` (`ba7a9ce`). gtk-ai is at `0.4.0`.
 
 **Product decision (2026-08-17):** gtk follows the same path as rtk. It rewrites the command **before** execution (`PreToolUse` → `git status` becomes `gtkai git status`). gtkai runs the real binary, injects flags, and filters the output. Post-filtering remains only for Claude Code native tools that do not go through Bash (`Read`, MCP, `Grep`, `Glob`).
 
@@ -128,15 +128,93 @@ Out of scope until the core and the runners cover a typical session: rtk TOML fi
 
 ---
 
+## 4. Filter plugins — namespaced filters (business logic)
+
+This is **not** the Claude Code plugin system and not any agent hook/marketplace. It is the domain model inside gtkai: who implements filtering for which shell command.
+
+Today the registry collapses **command = filter** (`ls` → one `Module`). The target model separates **identity** from **what gets intercepted**.
+
+### Identity
+
+Every filter has a full name:
+
+```text
+author/gtkai-<command>
+```
+
+Examples: `gtkai/gtkai-ls`, `gtkai/gtkai-git`, `jmeiracorbal/gtkai-ls`.
+
+- `author` — who owns the implementation.
+- `gtkai-<command>` — fixed suffix; `<command>` is the shell argv0 this filter is for (`ls`, `git`, `find`, …).
+
+Built-in filters ship as `gtkai/gtkai-<command>` (compiled in). Third-party filters use the same naming rule.
+
+The agent still runs `ls`, `git status`, … PreToolUse still rewrites to `gtkai ls`, `gtkai git status`. The namespace never appears in the Bash command Claude sees.
+
+### Contract
+
+Each filter declares, at minimum:
+
+| Field | Meaning |
+|---|---|
+| `id` | Full name `author/gtkai-<command>` (must match the naming rule) |
+| `filters` | Shell command intercepted (argv0 basename), e.g. `ls` |
+
+Behavior matches today’s `Module`: `Rewrite`, `FilterOutput`, optional `ExtraEnv`. The core keeps ANSI strip, `never_worse`, and `gain`; filters do not bypass them.
+
+A filter owns the full surface of that command or passes through: if it cannot handle an invocation, `Rewrite` returns no change and gtkai runs the original argv unchanged.
+
+### Which filter is active
+
+Many filters may target the same shell command. Only one is **active** at a time:
+
+- **Active filter** = the **most recently installed** among all filters whose `filters` field equals that command.
+
+On **install**, when another filter already targets the same command:
+
+- Print a **warning** (stderr) naming the previous active filter and the new one.
+- The newly installed filter becomes active.
+
+On **uninstall** (`gtkai filter uninstall author/gtkai-<command>` — full name only):
+
+- Remove that filter by `id`.
+- If **no filters remain** for that shell command → do not rewrite it in PreToolUse; pass through.
+- If **other filters remain** → active = most recent among the survivors (same rule as install).
+
+Listing installed filters and which one is active per command is part of this phase.
+
+### CLI (sketch)
+
+```text
+gtkai filter install <path-or-package>   # register filter; warn on command conflict
+gtkai filter uninstall author/gtkai-ls   # by full id only
+gtkai filter list                        # all filters; mark active per command
+```
+
+Exact transport (Go package, manifest + subprocess, …) is an implementation detail. The rules above are not.
+
+### What this is not
+
+- Not a Claude Code plugin per filter.
+- Not rtk’s TOML rule engine.
+- Not auto-discovery from PATH or GitHub without an explicit `filter install`.
+
+Third-party filters are installed into gtkai’s filter registry; they do not register agent hooks.
+
+Done when: native `gtkai/gtkai-*` filters use the same registry; install/uninstall/list work; conflict and uninstall semantics above have tests; `hook-pre` resolves the active filter by shell command before rewrite.
+
+---
+
 ## Current vs target
 
 | | gtk-ai 0.4.0 | Remaining |
 |---|---|---|
 | Bash | `PreToolUse` rewrites registered commands to `gtkai …`; the binary runs and filters | Drop Bash `PostToolUse` once coverage is trusted |
-| `Rewrite()` | Injects flags for `git status`, `git log`, `ls`, `grep` | Runners (`go test -json`) |
+| Filter identity | Flat `registry.Get("ls")` | Namespaced `author/gtkai-<command>`; active = most recent install |
+| `Rewrite()` | Injects flags for `git status`, `git log`, `ls`, `grep` | Runners (`go test -json`); third-party filters via `filter install` |
 | `Read` / MCP | `PostToolUse` | `/* */` on Read; native `Grep`/`Glob` |
-| `gain` | Every proxy execution | — |
-| Commands | find, ls, git (status/log/diff/branch), grep, rg, Read, MCP | `cat`/`head`/`tail`/`tree`, then runners |
+| `gain` | Every proxy execution | Per-filter attribution by `id` |
+| Commands | find, ls, git (status/log/diff/branch), grep, rg, Read, MCP | §2 remainder, then runners, then filter plugin CLI |
 
 Filtering stays heuristic. No semantic compression.
 
@@ -149,15 +227,17 @@ Filtering stays heuristic. No semantic compression.
 - **Write commands.** `git commit`, `git push`, `docker run` must not be left half-done. The proxy forwards stdin/TTY when the command is not read-only; if it cannot, do not rewrite.
 - **Double filtering.** While Pre and Post both sit on Bash, output can be filtered twice and grow. Drop Bash Post as soon as the proxy covers the module.
 - **`never_worse`.** A 3-file status must not become a longer paragraph.
+- **Filter stack.** Multiple filters for one command rely on install order; uninstall must not leave a stale active pointer.
 - **False positives in runners.** Keep any line that is not classified.
 
 ---
 
 ## PR order
 
-1. PreToolUse proxy + end-to-end `git status` (section 1).
+1. PreToolUse proxy + end-to-end `git status` (section 1) — **done in 0.4.0**.
 2. Corrections to current modules + `cat`/`head`/`tail`/`tree` + remaining git (section 2).
 3. Runners (section 3).
-4. Ecosystem according to `gain`.
+4. Filter plugin registry + install/uninstall/list + migrate natives to `gtkai/gtkai-*` (section 4).
+5. Ecosystem commands as third-party filters according to `gain` (section 3 ecosystem).
 
-Do not bump the version until PR 1 is usable. The git tag must match every version-bearing file (`cmd/gtkai/main.go`, plugin json, `mcpscan`, README).
+The git tag must match every version-bearing file (`cmd/gtkai/main.go`, plugin json, `mcpscan`, README).
