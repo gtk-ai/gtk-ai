@@ -18,8 +18,8 @@ type Module interface {
 	Rewrite(args []string) ([]string, bool)
 
 	// FilterOutput applies heuristic pruning to command output before it reaches the agent.
-	// Returns the filtered output.
-	FilterOutput(output string) string
+	// args are the words after the module name (e.g. ["status", "-sb"] for git).
+	FilterOutput(args []string, output string) string
 
 	// TokensBefore estimates tokens in the original output.
 	TokensBefore(output string) int
@@ -60,4 +60,12 @@ func EstimateTokens(s string) int {
 		return 1
 	}
 	return n
+}
+
+// NeverWorse returns filtered, or raw when filtered would use more estimated tokens.
+func NeverWorse(raw, filtered string) string {
+	if EstimateTokens(filtered) > EstimateTokens(raw) {
+		return raw
+	}
+	return filtered
 }

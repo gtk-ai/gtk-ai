@@ -1,7 +1,7 @@
 {
   "name": "gtk-ai",
   "metadata": {
-    "description": "PostToolUse hook for Claude Code. Applies rule-based output reduction to Bash, git, grep, find, ls, Read, and MCP tools — truncation, grouping, and comment stripping depending on the command."
+    "description": "PreToolUse rewrite and PostToolUse filtering for Claude Code. Applies rule-based output reduction to Bash, git, grep, find, ls, Read, and MCP tools."
   },
   "owner": {
     "name": "jmeiracorbal",
@@ -10,8 +10,8 @@
   "plugins": [
     {
       "name": "gtk-ai",
-      "description": "PostToolUse hook that applies rule-based filtering to Bash, grep, find, ls, git, Read, and MCP tool output before it reaches the agent.",
-      "version": "0.3.3",
+      "description": "PreToolUse rewrite plus PostToolUse filtering for Bash, git, grep, find, ls, Read, and MCP tool output.",
+      "version": "0.4.0",
       "author": {
         "name": "jmeiracorbal"
       },

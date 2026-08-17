@@ -1,26 +1,26 @@
 # gtk-ai
 
 ![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go&logoColor=white)
-![Version](https://img.shields.io/badge/version-0.3.3-blue?style=flat)
+![Version](https://img.shields.io/badge/version-0.4.0-blue?style=flat)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue?style=flat)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin%20compatible-blueviolet?style=flat)
 ![Build](https://img.shields.io/badge/build-passing-brightgreen?style=flat)
 
 `gtk-ai` is a two-part integration for Claude Code:
 
-- the `gtkai` Go binary, which applies rule-based filtering to tool output
-- the Claude plugin, which registers the `PostToolUse` hook and invokes `gtkai`
+- the `gtkai` Go binary, which rewrites Bash commands before they run and filters their output
+- the Claude plugin, which registers `PreToolUse` and `PostToolUse` hooks and invokes `gtkai`
 
-It filters Bash, git, grep, find, ls, Read, and MCP tool output before it reaches the agent: truncation, grouping by extension, condensed formatting, and comment stripping depending on the command.
+Registered Bash commands are rewritten to `gtkai <cmd>` before execution. gtkai runs the real binary, injects compact flags when needed, and filters stdout. `Read` and MCP still go through `PostToolUse`.
 
 ```text
-Claude → Bash("find . -name '*.rs'")
-              ↓ executes
-         84 results, full paths (raw output)
-              ↓ PostToolUse hook → plugin script → gtkai hook-post
-         84 results / ext: .rs(84) / ...10 paths shown
+Claude → Bash("git status")
+              ↓ PreToolUse → gtkai hook-pre
+         command becomes gtkai git status
+              ↓ gtkai runs git status --porcelain -b
+         compact grouped status
               ↓
-         Claude receives filtered output (shorter, some detail dropped)
+         Claude receives filtered output
 ```
 
 ## Benchmark
@@ -92,9 +92,9 @@ Each module handles one command. All built-in modules ship with the binary.
 |---|---|---|
 | `find` | `find` | Truncates large result sets, groups by extension, shows summary |
 | `ls` | `ls` | Groups files by extension, separates dirs |
-| `git` | `git diff/log/status/branch` | Limits diff lines, truncates log, formats status |
+| `git` | `git diff/log/status/branch` | `git status` injects `--porcelain -b` and groups by state; other subcommands still post-filter |
 | `grep` | `grep` | Caps results, shows match count per file |
-| `gain` | — | SQLite analytics: tracks tokens in/out per command (not yet integrated in the hook) |
+| `gain` | — | SQLite analytics: recorded on each proxy run |
 
 ## Adding a module
 
@@ -116,7 +116,7 @@ func (m *Module) Name() string { return "mycommand" }
 
 func (m *Module) Rewrite(args []string) ([]string, bool) { return nil, false }
 
-func (m *Module) FilterOutput(output string) string { return output }
+func (m *Module) FilterOutput(args []string, output string) string { return output }
 
 func (m *Module) TokensBefore(output string) int { return registry.EstimateTokens(output) }
 
@@ -144,7 +144,9 @@ To identify which tools to exempt, check the tool names returned by your MCP ser
 ## Commands
 
 ```text
+gtkai hook-pre      PreToolUse handler — rewrites Bash commands to gtkai
 gtkai hook-post     PostToolUse handler — reads stdin JSON, writes filtered output
+gtkai git status    Proxy: run git through gtkai (other registered modules too)
 gtkai mcp-scan      List MCP server tools, suggest passthrough prefixes
 gtkai gain          Token savings analytics
 gtkai version       Print version
@@ -157,7 +159,10 @@ gtk-ai/
 ├── cmd/gtkai/              # binary entry point
 ├── internal/
 │   ├── registry/           # Module interface + Register() + EstimateTokens()
-│   └── hook/               # unified PostToolUse handler
+│   ├── shell/              # Bash command rewrite
+│   ├── proxy/              # execute + filter + gain
+│   ├── text/               # ANSI strip
+│   └── hook/               # PreToolUse and PostToolUse handlers
 ├── modules/
 │   ├── find/               # find output filter
 │   ├── ls/                 # ls output filter
@@ -166,7 +171,7 @@ gtk-ai/
 │   └── gain/               # SQLite token savings analytics
 └── plugin/
     ├── hooks/              # Claude plugin hook registration
-    └── scripts/            # script that invokes gtkai from Claude's hook system
+    └── scripts/            # scripts that invoke gtkai from Claude's hook system
 ```
 
 The `registry` package is the only shared dependency between modules. Modules never import each other.

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/jmeiracorbal/gtk-ai/internal/registry"
 )
 
 func TestFilterStatusStagedVsModified(t *testing.T) {
@@ -66,11 +68,10 @@ func TestFilterStatusUntrackedTruncated(t *testing.T) {
 }
 
 func TestFilterStatusLengthGuard(t *testing.T) {
-	// small input: reformatted result may be longer → guard returns original
 	raw := "M  a.go\n M b.go\nA  c.go\n"
 	out := filterStatus(raw)
-	// either the guard kicked in (returns raw) or result is shorter — never longer
-	if len(out) > len(raw) {
-		t.Errorf("filterStatus should never return output longer than input: %d > %d", len(out), len(raw))
+	shown := registry.NeverWorse(raw, out)
+	if registry.EstimateTokens(shown) > registry.EstimateTokens(raw) {
+		t.Errorf("NeverWorse should never return more tokens than input")
 	}
 }

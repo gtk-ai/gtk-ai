@@ -23,7 +23,7 @@ func (m *Module) Rewrite(args []string) ([]string, bool) {
 	return nil, false
 }
 
-func (m *Module) FilterOutput(output string) string {
+func (m *Module) FilterOutput(_ []string, output string) string {
 	lines := strings.Split(strings.TrimRight(output, "\n"), "\n")
 	var paths []string
 	for _, l := range lines {

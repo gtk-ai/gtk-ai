@@ -39,7 +39,11 @@ type Tracker struct {
 
 // Open opens (or creates) the gain database.
 func Open() (*Tracker, error) {
-	dir := filepath.Join(os.Getenv("HOME"), ".gtk-ai")
+	home := os.Getenv("HOME")
+	if home == "" {
+		return nil, fmt.Errorf("HOME is not set")
+	}
+	dir := filepath.Join(home, ".gtk-ai")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, err
 	}
@@ -94,10 +98,10 @@ func (t *Tracker) GetSummary() (Summary, error) {
 
 // CommandStat is per-command aggregated stats.
 type CommandStat struct {
-	Command    string
-	Count      int
+	Command     string
+	Count       int
 	TokensSaved int
-	AvgPct     float64
+	AvgPct      float64
 }
 
 // GetByCommand returns per-command stats sorted by tokens saved.

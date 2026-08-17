@@ -1,6 +1,18 @@
 {
-  "description": "gtk-ai PostToolUse hook: applies rule-based filtering to Bash, MCP, and Read output before it reaches the agent",
+  "description": "gtk-ai hooks: PreToolUse rewrites Bash commands to gtkai; PostToolUse filters Read, MCP, and unre-written Bash output",
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/scripts/gtkai-pre-tool-use.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Bash|mcp__.*|Read",

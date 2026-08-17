@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/jmeiracorbal/gtk-ai/internal/registry"
-	gitmod "github.com/jmeiracorbal/gtk-ai/modules/git"
+	"github.com/jmeiracorbal/gtk-ai/internal/text"
 	readmod "github.com/jmeiracorbal/gtk-ai/modules/read"
 )
 
@@ -47,9 +47,9 @@ type hookOutput struct {
 }
 
 type hookSpecific struct {
-	HookEventName      string        `json:"hookEventName"`
-	UpdatedOutput      *string       `json:"updatedOutput,omitempty"`
-	UpdatedMCPOutput   []textContent `json:"updatedMCPToolOutput,omitempty"`
+	HookEventName    string        `json:"hookEventName"`
+	UpdatedOutput    *string       `json:"updatedOutput,omitempty"`
+	UpdatedMCPOutput []textContent `json:"updatedMCPToolOutput,omitempty"`
 }
 
 // ── MCP passthrough patterns ──────────────────────────────────────────────────
@@ -144,22 +144,11 @@ func filterBashOutput(command, output string) (string, bool) {
 	}
 
 	base := fields[0]
-	// Strip path prefix if any (e.g. /usr/bin/find → find)
 	if idx := strings.LastIndex(base, "/"); idx >= 0 {
 		base = base[idx+1:]
 	}
-
-	// Special case: git needs the subcommand
-	if base == "git" {
-		subcommand := ""
-		for _, f := range fields[1:] {
-			if !strings.HasPrefix(f, "-") {
-				subcommand = f
-				break
-			}
-		}
-		filtered := gitmod.FilterOutputWithArgs(subcommand, output)
-		return filtered, filtered != output
+	if base == "gtkai" {
+		return output, false
 	}
 
 	mod := registry.Get(base)
@@ -167,8 +156,10 @@ func filterBashOutput(command, output string) (string, bool) {
 		return output, false
 	}
 
-	filtered := mod.FilterOutput(output)
-	return filtered, filtered != output
+	stripped := text.StripANSI(output)
+	filtered := mod.FilterOutput(fields[1:], stripped)
+	shown := registry.NeverWorse(output, filtered)
+	return shown, shown != output
 }
 
 // ── MCP handler ───────────────────────────────────────────────────────────────

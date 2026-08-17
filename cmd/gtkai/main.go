@@ -1,5 +1,4 @@
-// gtk-ai — PostToolUse hook for Claude Code.
-// Applies rule-based output filtering to Bash, git, grep, find, ls, Read, and MCP tools.
+// gtk-ai — PreToolUse proxy and PostToolUse filter for Claude Code.
 // Binary: gtkai
 package main
 
@@ -8,10 +7,11 @@ import (
 	"os"
 
 	"github.com/jmeiracorbal/gtk-ai/internal/hook"
+	"github.com/jmeiracorbal/gtk-ai/internal/proxy"
+	"github.com/jmeiracorbal/gtk-ai/internal/registry"
 	"github.com/jmeiracorbal/gtk-ai/modules/gain"
 	"github.com/jmeiracorbal/gtk-ai/modules/mcpscan"
 
-	// Register all built-in modules
 	_ "github.com/jmeiracorbal/gtk-ai/modules/find"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/git"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/grep"
@@ -19,13 +19,15 @@ import (
 	_ "github.com/jmeiracorbal/gtk-ai/modules/rg"
 )
 
-const version = "0.3.3"
+const version = "0.4.0"
 
 func usage() {
 	fmt.Fprintf(os.Stderr, `gtkai %s
 
 Usage:
+  gtkai hook-pre             PreToolUse hook — rewrites Bash commands to gtkai
   gtkai hook-post            PostToolUse hook — reads stdin, writes filtered output
+  gtkai <module> [args...]   Run a registered command through the proxy
   gtkai mcp-scan             List tools from all MCP servers, suggest passthrough prefixes
   gtkai gain                 Show token savings analytics
   gtkai version              Print version
@@ -46,14 +48,24 @@ func main() {
 	case "version", "--version", "-v":
 		fmt.Printf("gtkai %s\n", version)
 
+	case "hook-pre":
+		bin, err := os.Executable()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "gtkai hook-pre: %v\n", err)
+			os.Exit(1)
+		}
+		_, err = hook.RunPre(os.Stdin, os.Stdout, bin)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "gtkai hook-pre: %v\n", err)
+			os.Exit(1)
+		}
+
 	case "hook-post":
-		modified, err := hook.Run(os.Stdin, os.Stdout)
+		_, err := hook.Run(os.Stdin, os.Stdout)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "gtkai hook-post: %v\n", err)
 			os.Exit(1)
 		}
-		_ = modified
-		os.Exit(0)
 
 	case "mcp-scan":
 		if err := mcpscan.Run(); err != nil {
@@ -74,8 +86,11 @@ func main() {
 		}
 
 	default:
-		fmt.Fprintf(os.Stderr, "gtkai: unknown command %q\n\n", os.Args[1])
-		usage()
-		os.Exit(1)
+		if registry.Get(os.Args[1]) == nil {
+			fmt.Fprintf(os.Stderr, "gtkai: unknown command %q\n\n", os.Args[1])
+			usage()
+			os.Exit(1)
+		}
+		os.Exit(proxy.Run(os.Args[1], os.Args[2:]))
 	}
 }

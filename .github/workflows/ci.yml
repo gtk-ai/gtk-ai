@@ -64,12 +64,17 @@ jobs:
           done
           echo "plugin manifest fields are consistent"
 
-      - name: Check hook script is executable
+      - name: Check hook scripts are executable
         run: |
-          mode=$(git ls-files -s plugin/scripts/gtkai-post-tool-use.sh | awk '{print $1}')
-          if [ "$mode" != "100755" ]; then
-            echo "plugin/scripts/gtkai-post-tool-use.sh is not executable in git (mode: $mode)"
-            echo "fix: git update-index --chmod=+x plugin/scripts/gtkai-post-tool-use.sh"
-            exit 1
-          fi
-          echo "hook script executable bit: ok"
+          failed=0
+          for f in plugin/scripts/gtkai-post-tool-use.sh plugin/scripts/gtkai-pre-tool-use.sh; do
+            mode=$(git ls-files -s "$f" | awk '{print $1}')
+            if [ "$mode" != "100755" ]; then
+              echo "$f is not executable in git (mode: $mode)"
+              echo "fix: git update-index --chmod=+x $f"
+              failed=1
+            else
+              echo "ok: $f"
+            fi
+          done
+          exit $failed
