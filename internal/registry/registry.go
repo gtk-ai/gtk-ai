@@ -28,6 +28,12 @@ type Module interface {
 	TokensAfter(filtered string) int
 }
 
+// EnvInjector is implemented by modules that need extra environment variables
+// when the proxy executes the command.
+type EnvInjector interface {
+	ExtraEnv(args []string) []string
+}
+
 var modules = map[string]Module{}
 
 // Register adds a module to the registry. Called from module init().

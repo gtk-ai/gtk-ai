@@ -3,8 +3,10 @@ package shell
 import (
 	"testing"
 
+	_ "github.com/jmeiracorbal/gtk-ai/modules/find"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/git"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/grep"
+	_ "github.com/jmeiracorbal/gtk-ai/modules/ls"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/rg"
 )
 
@@ -79,5 +81,21 @@ func TestRewriteRedirectPass(t *testing.T) {
 	_, ok := Rewrite("git status > /tmp/out", "gtkai")
 	if ok {
 		t.Fatal("redirects must pass through")
+	}
+}
+
+func TestRewriteRegisteredModules(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{"ls", "gtkai ls"},
+		{"ls -la /tmp", "gtkai ls -la /tmp"},
+		{"find . -name '*.go'", "gtkai find . -name '*.go'"},
+		{"grep -n foo src", "gtkai grep -n foo src"},
+		{"rg Error src", "gtkai rg Error src"},
+	}
+	for _, tc := range cases {
+		got, ok := Rewrite(tc.in, "gtkai")
+		if !ok || got != tc.want {
+			t.Errorf("%q: got %q ok=%v want %q", tc.in, got, ok, tc.want)
+		}
 	}
 }

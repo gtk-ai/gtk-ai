@@ -29,10 +29,11 @@ Numbers from `go test ./internal/hook/... -v`. Token estimate: ~4 chars/token.
 
 | Input | Tokens before | Tokens after | Savings |
 |---|---:|---:|---:|
-| `find`: 150 paths | 1,050 | 714 | **32%** |
-| `grep`: 250 matches across 20 files | 3,820 | 3,059 | **20%** |
-| `git diff`: 400 lines | 3,185 | 2,386 | **25%** |
-| `git log`: 80 commits | 1,917 | 1,204 | **37%** |
+| `find`: 150 paths | 1,050 | 374 | **64%** |
+| `ls`: 70 entries | 262 | 65 | **75%** |
+| `grep`: 250 matches across 20 files | 3,820 | 3,360 | **12%** |
+| `git diff`: 400 lines | 3,185 | 813 | **74%** |
+| `git log`: 80 commits | 1,917 | 244 | **87%** |
 | `Read`: Go file, 100 commented vars | 1,346 | 348 | **74%** |
 | `Read`: plain text, 400 lines | 2,772 | 1,380 | **50%** |
 | MCP tool response — 5,200 chars | 1,300 | 758 | **42%** |
@@ -90,10 +91,10 @@ Each module handles one command. All built-in modules ship with the binary.
 
 | Module | Command | What it does |
 |---|---|---|
-| `find` | `find` | Truncates large result sets, groups by extension, shows summary |
-| `ls` | `ls` | Groups files by extension, separates dirs |
-| `git` | `git diff/log/status/branch` | `git status` injects `--porcelain -b` and groups by state; other subcommands still post-filter |
-| `grep` | `grep` | Caps results, shows match count per file |
+| `find` | `find` | Groups paths by directory, caps shown files, extension summary |
+| `ls` | `ls` | Injects `-l` + `LC_ALL=C` (and `-a` only if the user asked); compact to counts and samples; skips noise dirs |
+| `git` | `git diff/log/status/branch` | `status` injects `--porcelain -b`; `log` injects pretty-format and `-10`; `diff` strips headers and caps hunks |
+| `grep` / `rg` | `grep`, `rg` | Shared grouping by file with per-file and total caps; `grep` injects `-nH` |
 | `gain` | — | SQLite analytics: recorded on each proxy run |
 
 ## Adding a module
@@ -146,7 +147,7 @@ To identify which tools to exempt, check the tool names returned by your MCP ser
 ```text
 gtkai hook-pre      PreToolUse handler — rewrites Bash commands to gtkai
 gtkai hook-post     PostToolUse handler — reads stdin JSON, writes filtered output
-gtkai git status    Proxy: run git through gtkai (other registered modules too)
+gtkai git status    Proxy: run a registered command through gtkai (`ls`, `find`, `grep`, `rg`, `git`)
 gtkai mcp-scan      List MCP server tools, suggest passthrough prefixes
 gtkai gain          Token savings analytics
 gtkai version       Print version
@@ -159,6 +160,7 @@ gtk-ai/
 ├── cmd/gtkai/              # binary entry point
 ├── internal/
 │   ├── registry/           # Module interface + Register() + EstimateTokens()
+│   ├── matchgroup/         # shared grep/rg grouping
 │   ├── shell/              # Bash command rewrite
 │   ├── proxy/              # execute + filter + gain
 │   ├── text/               # ANSI strip

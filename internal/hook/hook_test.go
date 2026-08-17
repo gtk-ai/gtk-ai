@@ -170,9 +170,7 @@ func TestLsSmallOutput(t *testing.T) {
 	}
 }
 
-func TestLsLargeOutputNotModified(t *testing.T) {
-	// ls always lists all filenames — reformatted output is always longer than raw.
-	// The len(result) >= len(output) guard ensures the hook never expands output.
+func TestLsLargeOutputCompressed(t *testing.T) {
 	var sb strings.Builder
 	for i := 0; i < 40; i++ {
 		fmt.Fprintf(&sb, "handler_%02d.go\n", i)
@@ -185,9 +183,17 @@ func TestLsLargeOutputNotModified(t *testing.T) {
 	}
 	raw := sb.String()
 
-	modified, _ := runHook(t, bashPayload("ls", raw))
-	if modified {
-		t.Error("ls output should not be modified: reformatted result is always longer than raw")
+	modified, out := runHook(t, bashPayload("ls", raw))
+	if !modified {
+		t.Fatal("large ls output should compact to counts and samples")
+	}
+	compressed := extractBashOutput(t, out)
+	reportGain(t, "ls (70 entries)", raw, compressed)
+	if len(compressed) >= len(raw) {
+		t.Errorf("expected compressed ls output to be shorter (%d >= %d)", len(compressed), len(raw))
+	}
+	if !strings.Contains(compressed, "40") && !strings.Contains(compressed, "files") {
+		t.Errorf("expected file count, got: %s", compressed)
 	}
 }
 

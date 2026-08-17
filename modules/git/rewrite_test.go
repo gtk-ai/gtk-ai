@@ -1,6 +1,7 @@
 package git
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -47,6 +48,48 @@ func TestRewriteNonStatus(t *testing.T) {
 	_, ok := m.Rewrite([]string{"diff"})
 	if ok {
 		t.Fatal("diff must not inject status flags")
+	}
+}
+
+func TestRewriteLogInjectsPretty(t *testing.T) {
+	m := &Module{}
+	got, ok := m.Rewrite([]string{"log"})
+	if !ok {
+		t.Fatal("expected rewrite")
+	}
+	want := []string{"log", "--pretty=format:%h %s (%ar) <%an>", "-10"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %v want %v", got, want)
+	}
+}
+
+func TestRewriteLogHonorsUserFormatAndLimit(t *testing.T) {
+	m := &Module{}
+	_, ok := m.Rewrite([]string{"log", "--oneline", "-n", "20"})
+	if ok {
+		t.Fatal("user format and limit must not be rewritten")
+	}
+}
+
+func TestRewriteLogInjectsLimitForOneline(t *testing.T) {
+	m := &Module{}
+	got, ok := m.Rewrite([]string{"log", "--oneline"})
+	if !ok {
+		t.Fatal("expected -50 when user passed format without limit")
+	}
+	if !reflect.DeepEqual(got, []string{"log", "-50", "--oneline"}) {
+		t.Fatalf("got %v", got)
+	}
+}
+
+func TestFilterLogDefaultCap(t *testing.T) {
+	var sb strings.Builder
+	for i := 0; i < 30; i++ {
+		fmt.Fprintf(&sb, "commit abc%04d\nAuthor: Dev <dev@example.com>\n\n    fix %d\n\n", i, i)
+	}
+	out := filterLog(nil, sb.String())
+	if strings.Count(out, "commit ") != 10 {
+		t.Fatalf("expected 10 commits, got %d\n%s", strings.Count(out, "commit "), out)
 	}
 }
 
