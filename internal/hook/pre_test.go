@@ -3,6 +3,7 @@ package hook_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -82,6 +83,24 @@ func TestPreIgnoresRead(t *testing.T) {
 	}
 	if ok {
 		t.Fatal("Read must not be rewritten")
+	}
+}
+
+func TestPreRewritesRegisteredBash(t *testing.T) {
+	cases := []string{"ls -la", "find . -name '*.go'", "grep -n foo .", "rg foo"}
+	for _, cmd := range cases {
+		payload := fmt.Sprintf(`{"tool_name":"Bash","tool_input":{"command":%q}}`, cmd)
+		var out bytes.Buffer
+		ok, err := hook.RunPre(strings.NewReader(payload), &out, "gtkai")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !ok {
+			t.Fatalf("%q: expected rewrite", cmd)
+		}
+		if !strings.Contains(out.String(), "gtkai "+strings.Fields(cmd)[0]) {
+			t.Fatalf("%q: rewritten command missing gtkai prefix: %s", cmd, out.String())
+		}
 	}
 }
 

@@ -28,6 +28,8 @@ func Run(name string, args []string) int {
 		execArgs = rewritten
 	}
 
+	env := extraEnv(mod, execArgs)
+
 	start := time.Now()
 
 	var rawOut, execOut, execErr string
@@ -35,10 +37,10 @@ func Run(name string, args []string) int {
 	var execFail error
 
 	if didRewrite {
-		rawOut, _, _, _ = runCmd(name, args)
-		execOut, execErr, execCode, execFail = runCmd(name, execArgs)
+		rawOut, _, _, _ = runCmd(name, args, env)
+		execOut, execErr, execCode, execFail = runCmd(name, execArgs, env)
 	} else {
-		execOut, execErr, execCode, execFail = runCmd(name, execArgs)
+		execOut, execErr, execCode, execFail = runCmd(name, execArgs, env)
 		rawOut = execOut
 	}
 
@@ -68,9 +70,20 @@ func Run(name string, args []string) int {
 	return execCode
 }
 
-func runCmd(name string, args []string) (stdout, stderr string, code int, err error) {
+func extraEnv(mod registry.Module, args []string) []string {
+	inj, ok := mod.(registry.EnvInjector)
+	if !ok {
+		return nil
+	}
+	return inj.ExtraEnv(args)
+}
+
+func runCmd(name string, args []string, env []string) (stdout, stderr string, code int, err error) {
 	cmd := exec.Command(name, args...)
 	cmd.Stdin = os.Stdin
+	if len(env) > 0 {
+		cmd.Env = append(os.Environ(), env...)
+	}
 	var outBuf, errBuf bytes.Buffer
 	cmd.Stdout = &outBuf
 	cmd.Stderr = &errBuf

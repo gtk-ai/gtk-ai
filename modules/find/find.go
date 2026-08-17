@@ -1,15 +1,19 @@
 // Module find: filters `find` output for Claude Code.
-// Strips noise, summarizes large result sets, groups by extension.
 package find
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/jmeiracorbal/gtk-ai/internal/registry"
 )
 
-const maxLines = 100
+const (
+	maxShown   = 50
+	minCompact = 8
+	maxExts    = 5
+)
 
 func init() {
 	registry.Register(&Module{})
@@ -34,52 +38,96 @@ func (m *Module) FilterOutput(_ []string, output string) string {
 	}
 
 	total := len(paths)
-	if total == 0 {
-		return "(no results)\n"
+	if total == 0 || total < minCompact {
+		return output
 	}
 
-	// Group by extension for summary
+	byDir := map[string][]string{}
+	var dirOrder []string
+	for _, p := range paths {
+		dir, name := splitPath(p)
+		if _, seen := byDir[dir]; !seen {
+			dirOrder = append(dirOrder, dir)
+		}
+		byDir[dir] = append(byDir[dir], name)
+	}
+	sort.Strings(dirOrder)
+
 	byExt := map[string]int{}
 	for _, p := range paths {
 		byExt[extOf(p)]++
 	}
 
-	truncated := false
-	shown := paths
-	if total > maxLines {
-		shown = paths[:maxLines]
-		truncated = true
-	}
-
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("📁 %d results", total))
-	if truncated {
-		sb.WriteString(fmt.Sprintf(" (showing %d)", maxLines))
-	}
-	sb.WriteString("\n")
+	sb.WriteString(fmt.Sprintf("%d files, %d dirs\n\n", total, len(dirOrder)))
 
-	// Extension summary
-	if len(byExt) > 0 {
-		parts := make([]string, 0, len(byExt))
-		for ext, n := range byExt {
-			if ext == "" {
-				ext = "no-ext"
-			}
-			parts = append(parts, fmt.Sprintf(".%s(%d)", ext, n))
+	shown := 0
+	for _, dir := range dirOrder {
+		if shown >= maxShown {
+			break
 		}
-		sb.WriteString(fmt.Sprintf("ext: %s\n", strings.Join(parts, " ")))
+		names := byDir[dir]
+		remaining := maxShown - shown
+		display := dir
+		if len(display) > 50 {
+			display = "..." + display[len(display)-47:]
+		}
+		if !strings.HasSuffix(display, "/") {
+			display += "/"
+		}
+		take := names
+		if len(names) > remaining {
+			take = names[:remaining]
+		}
+		sb.WriteString(display)
+		sb.WriteByte(' ')
+		sb.WriteString(strings.Join(take, " "))
+		sb.WriteByte('\n')
+		shown += len(take)
+	}
+	if shown < total {
+		sb.WriteString(fmt.Sprintf("+%d more\n", total-shown))
 	}
 
-	sb.WriteString("\n")
-	for _, p := range shown {
-		sb.WriteString(p)
-		sb.WriteString("\n")
-	}
-	if truncated {
-		sb.WriteString(fmt.Sprintf("... +%d more\n", total-maxLines))
+	if len(byExt) > 0 {
+		type kv struct {
+			ext string
+			n   int
+		}
+		exts := make([]kv, 0, len(byExt))
+		for ext, n := range byExt {
+			exts = append(exts, kv{ext, n})
+		}
+		sort.Slice(exts, func(i, j int) bool {
+			if exts[i].n != exts[j].n {
+				return exts[i].n > exts[j].n
+			}
+			return exts[i].ext < exts[j].ext
+		})
+		sb.WriteByte('\n')
+		sb.WriteString("ext: ")
+		n := len(exts)
+		if n > maxExts {
+			n = maxExts
+		}
+		for i := 0; i < n; i++ {
+			if i > 0 {
+				sb.WriteByte(' ')
+			}
+			label := exts[i].ext
+			if label == "" {
+				label = "no-ext"
+			}
+			sb.WriteString(fmt.Sprintf(".%s(%d)", label, exts[i].n))
+		}
+		sb.WriteByte('\n')
 	}
 
-	return sb.String()
+	result := sb.String()
+	if len(result) >= len(output) {
+		return output
+	}
+	return result
 }
 
 func (m *Module) TokensBefore(output string) int {
@@ -90,15 +138,26 @@ func (m *Module) TokensAfter(filtered string) int {
 	return registry.EstimateTokens(filtered)
 }
 
+func splitPath(p string) (dir, name string) {
+	slash := strings.LastIndex(p, "/")
+	if slash < 0 {
+		return ".", p
+	}
+	dir = p[:slash]
+	if dir == "" {
+		dir = "/"
+	}
+	return dir, p[slash+1:]
+}
+
 func extOf(path string) string {
-	// Use last component
 	slash := strings.LastIndex(path, "/")
 	name := path
 	if slash >= 0 {
 		name = path[slash+1:]
 	}
 	dot := strings.LastIndex(name, ".")
-	if dot < 0 || dot == len(name)-1 {
+	if dot <= 0 || dot == len(name)-1 {
 		return ""
 	}
 	return name[dot+1:]

@@ -2,6 +2,7 @@ package proxy_test
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -13,6 +14,7 @@ import (
 	"github.com/jmeiracorbal/gtk-ai/modules/gain"
 
 	_ "github.com/jmeiracorbal/gtk-ai/modules/git"
+	_ "github.com/jmeiracorbal/gtk-ai/modules/ls"
 )
 
 func TestRunGitStatus(t *testing.T) {
@@ -96,4 +98,59 @@ func TestRunUnknown(t *testing.T) {
 	if code != 1 {
 		t.Fatalf("exit %d", code)
 	}
+}
+
+func TestRunLs(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	dir := t.TempDir()
+	for i := 0; i < 40; i++ {
+		name := filepath.Join(dir, fmt.Sprintf("handler_%02d.go", i))
+		if err := os.WriteFile(name, []byte("package p\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Mkdir(filepath.Join(dir, "src"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	orig, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(orig) })
+
+	out := captureStdout(t, func() int { return proxy.Run("ls", nil) })
+	if !strings.Contains(out, "files") {
+		t.Fatalf("expected compact ls, got %q", out)
+	}
+	if strings.Count(out, "handler_") > 12 {
+		t.Fatalf("expected sampled names, got %q", out)
+	}
+}
+
+func captureStdout(t *testing.T, fn func() int) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := os.Stdout
+	os.Stdout = w
+	code := fn()
+	_ = w.Close()
+	os.Stdout = old
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, r); err != nil {
+		t.Fatal(err)
+	}
+	_ = r.Close()
+	if code != 0 {
+		t.Fatalf("exit %d, out %q", code, buf.String())
+	}
+	return buf.String()
 }

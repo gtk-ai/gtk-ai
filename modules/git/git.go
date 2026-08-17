@@ -4,15 +4,20 @@ package git
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/jmeiracorbal/gtk-ai/internal/registry"
 )
 
 const (
-	maxDiffLines   = 300
-	maxLogEntries  = 50
-	maxStatusLines = 100
+	maxDiffLines    = 300
+	maxHunkLines    = 100
+	maxLogDefault   = 10
+	maxLogUserFmt   = 50
+	maxLogLineWidth = 80
+	maxStatusLines  = 100
+	prettyLogFmt    = "%h %s (%ar) <%an>"
 )
 
 func init() {
@@ -25,31 +30,54 @@ func (m *Module) Name() string { return "git" }
 
 func (m *Module) Rewrite(args []string) ([]string, bool) {
 	globals, sub, rest, ok := splitGitArgs(args)
-	if !ok || sub != "status" {
+	if !ok {
 		return nil, false
 	}
-	if !usesCompactStatusPath(rest) {
+	switch sub {
+	case "status":
+		if !usesCompactStatusPath(rest) {
+			return nil, false
+		}
+		out := append(append([]string{}, globals...), "status", "--porcelain", "-b")
+		return out, true
+	case "log":
+		return rewriteLog(globals, rest)
+	default:
 		return nil, false
 	}
-	out := append(append([]string{}, globals...), "status", "--porcelain", "-b")
+}
+
+func rewriteLog(globals, rest []string) ([]string, bool) {
+	hasFmt := hasLogFormat(rest)
+	_, hasLimit := parseLogLimit(rest)
+	if hasFmt && hasLimit {
+		return nil, false
+	}
+	out := append(append([]string{}, globals...), "log")
+	if !hasFmt {
+		out = append(out, "--pretty=format:"+prettyLogFmt)
+	}
+	if !hasLimit {
+		if hasFmt {
+			out = append(out, "-50")
+		} else {
+			out = append(out, "-10")
+		}
+	}
+	out = append(out, rest...)
 	return out, true
 }
 
 func (m *Module) FilterOutput(args []string, output string) string {
-	_, sub, _, ok := splitGitArgs(args)
+	_, sub, rest, ok := splitGitArgs(args)
 	if !ok {
 		return output
 	}
-	return FilterOutputWithArgs(sub, output)
-}
-
-// FilterOutputWithArgs filters git output based on the subcommand.
-func FilterOutputWithArgs(subcommand, output string) string {
-	switch subcommand {
+	switch sub {
 	case "diff":
 		return filterDiff(output)
 	case "log":
-		return filterLog(output)
+		return filterLog(rest, output)
 	case "status":
 		return filterStatus(output)
 	case "branch":
@@ -60,31 +88,210 @@ func FilterOutputWithArgs(subcommand, output string) string {
 }
 
 func filterDiff(output string) string {
-	lines := strings.Split(output, "\n")
-	if len(lines) <= maxDiffLines {
-		return output
+	if !strings.Contains(output, "diff --git") && !strings.Contains(output, "@@") {
+		return capLines(output, maxDiffLines)
 	}
+
 	var sb strings.Builder
-	for _, l := range lines[:maxDiffLines] {
-		sb.WriteString(l)
-		sb.WriteString("\n")
+	hunkShown := 0
+	hunkSkipped := 0
+	inHunk := false
+	totalLines := 0
+	truncated := false
+
+	flushSkip := func() {
+		if hunkSkipped > 0 {
+			fmt.Fprintf(&sb, " ... (%d lines truncated)\n", hunkSkipped)
+			truncated = true
+			hunkSkipped = 0
+		}
 	}
-	sb.WriteString(fmt.Sprintf("... +%d lines truncated (use git diff <file> for specific files)\n", len(lines)-maxDiffLines))
-	return sb.String()
+
+	for _, line := range strings.Split(output, "\n") {
+		if totalLines >= maxDiffLines {
+			truncated = true
+			break
+		}
+		switch {
+		case strings.HasPrefix(line, "diff --git"):
+			flushSkip()
+			file := diffFile(line)
+			sb.WriteByte('\n')
+			sb.WriteString(file)
+			sb.WriteByte('\n')
+			inHunk = true
+			hunkShown = 0
+			totalLines++
+		case strings.HasPrefix(line, "index ") || strings.HasPrefix(line, "--- ") ||
+			strings.HasPrefix(line, "+++ ") || strings.HasPrefix(line, "new file") ||
+			strings.HasPrefix(line, "deleted file") || strings.HasPrefix(line, "old mode") ||
+			strings.HasPrefix(line, "new mode"):
+			continue
+		case strings.HasPrefix(line, "@@"):
+			flushSkip()
+			sb.WriteByte(' ')
+			sb.WriteString(line)
+			sb.WriteByte('\n')
+			inHunk = true
+			hunkShown = 0
+			totalLines++
+		case inHunk && (strings.HasPrefix(line, "+") || strings.HasPrefix(line, "-") || strings.HasPrefix(line, " ")):
+			if strings.HasPrefix(line, "+++") || strings.HasPrefix(line, "---") {
+				continue
+			}
+			if hunkShown < maxHunkLines {
+				sb.WriteByte(' ')
+				sb.WriteString(line)
+				sb.WriteByte('\n')
+				hunkShown++
+				totalLines++
+			} else {
+				hunkSkipped++
+			}
+		}
+	}
+	flushSkip()
+	if truncated {
+		sb.WriteString("... (more changes truncated)\n")
+	}
+	result := sb.String()
+	if result == "" || len(result) >= len(output) {
+		return capLines(output, maxDiffLines)
+	}
+	return result
 }
 
-func filterLog(output string) string {
-	// Each log entry starts with "commit "
-	entries := splitLogEntries(output)
-	if len(entries) <= maxLogEntries {
+func diffFile(line string) string {
+	if i := strings.Index(line, " b/"); i >= 0 {
+		return line[i+3:]
+	}
+	fields := strings.Fields(line)
+	if len(fields) > 0 {
+		return fields[len(fields)-1]
+	}
+	return line
+}
+
+func capLines(output string, max int) string {
+	lines := strings.Split(output, "\n")
+	if len(lines) <= max {
 		return output
 	}
-	var sb strings.Builder
-	for _, e := range entries[:maxLogEntries] {
-		sb.WriteString(e)
+	return strings.Join(lines[:max], "\n") + fmt.Sprintf("\n... +%d lines truncated\n", len(lines)-max)
+}
+
+func filterLog(args []string, output string) string {
+	userFmt := hasLogFormat(args)
+	userN, hasLimit := parseLogLimit(args)
+	limit := maxLogDefault
+	if hasLimit {
+		limit = userN
+	} else if userFmt {
+		limit = maxLogUserFmt
 	}
-	sb.WriteString(fmt.Sprintf("... +%d commits truncated\n", len(entries)-maxLogEntries))
-	return sb.String()
+
+	if looksLikeVerboseLog(output) {
+		entries := splitLogEntries(output)
+		max := limit
+		if hasLimit && userN >= len(entries) {
+			max = len(entries)
+		}
+		if len(entries) <= max {
+			return output
+		}
+		var sb strings.Builder
+		for _, e := range entries[:max] {
+			sb.WriteString(e)
+		}
+		sb.WriteString(fmt.Sprintf("... +%d commits truncated\n", len(entries)-max))
+		return sb.String()
+	}
+
+	var lines []string
+	for _, l := range strings.Split(strings.TrimRight(output, "\n"), "\n") {
+		if strings.TrimSpace(l) == "" {
+			continue
+		}
+		lines = append(lines, truncateLine(l, maxLogLineWidth))
+	}
+	max := limit
+	if hasLimit {
+		max = len(lines)
+	}
+	if len(lines) <= max {
+		return strings.Join(lines, "\n") + "\n"
+	}
+	return strings.Join(lines[:max], "\n") + fmt.Sprintf("\n... +%d commits truncated\n", len(lines)-max)
+}
+
+func looksLikeVerboseLog(output string) bool {
+	for _, l := range strings.Split(output, "\n") {
+		if l == "" {
+			continue
+		}
+		return strings.HasPrefix(l, "commit ")
+	}
+	return false
+}
+
+func truncateLine(s string, width int) string {
+	if width <= 0 || len(s) <= width {
+		return s
+	}
+	return s[:width]
+}
+
+func hasLogFormat(args []string) bool {
+	for _, a := range args {
+		if a == "--oneline" || strings.HasPrefix(a, "--pretty") || strings.HasPrefix(a, "--format") {
+			return true
+		}
+	}
+	return false
+}
+
+func parseLogLimit(args []string) (int, bool) {
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if a == "-n" || a == "--max-count" {
+			if i+1 >= len(args) {
+				return 0, true
+			}
+			n, err := strconv.Atoi(args[i+1])
+			if err != nil {
+				return 0, true
+			}
+			return n, true
+		}
+		if rest, ok := strings.CutPrefix(a, "--max-count="); ok {
+			n, err := strconv.Atoi(rest)
+			if err != nil {
+				return 0, true
+			}
+			return n, true
+		}
+		if strings.HasPrefix(a, "-n") && len(a) > 2 && isDigits(a[2:]) {
+			n, _ := strconv.Atoi(a[2:])
+			return n, true
+		}
+		if len(a) > 1 && a[0] == '-' && a[1] != '-' && isDigits(a[1:]) {
+			n, _ := strconv.Atoi(a[1:])
+			return n, true
+		}
+	}
+	return 0, false
+}
+
+func isDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func filterStatus(output string) string {
