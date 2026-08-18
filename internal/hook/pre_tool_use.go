@@ -15,15 +15,29 @@ type preOutput struct {
 }
 
 type preSpecific struct {
-	HookEventName string         `json:"hookEventName"`
-	UpdatedInput  map[string]any `json:"updatedInput"`
+	HookEventName      string         `json:"hookEventName"`
+	PermissionDecision string         `json:"permissionDecision,omitempty"`
+	UpdatedInput       map[string]any `json:"updatedInput,omitempty"`
 }
 
-// RunPre reads a PreToolUse event, rewrites Bash commands to gtkai when a module matches.
+type cursorPreOutput struct {
+	Permission   string         `json:"permission"`
+	UpdatedInput map[string]any `json:"updated_input"`
+}
+
+type openCodePreOutput struct {
+	Command string `json:"command"`
+}
+
+// RunPre reads a PreToolUse event, rewrites shell commands to gtkai when a module matches.
 // gtkaiBin is the binary path inserted into the rewritten command.
-func RunPre(r io.Reader, w io.Writer, gtkaiBin string) (bool, error) {
+// agent selects the stdout JSON contract of the target coding agent.
+func RunPre(r io.Reader, w io.Writer, gtkaiBin string, agent Agent) (bool, error) {
 	if gtkaiBin == "" {
 		return false, fmt.Errorf("gtkai binary path is empty")
+	}
+	if agent == "" {
+		return false, fmt.Errorf("agent is empty")
 	}
 
 	data, err := io.ReadAll(io.LimitReader(r, stdinCap+1))
@@ -41,7 +55,7 @@ func RunPre(r io.Reader, w io.Writer, gtkaiBin string) (bool, error) {
 	if err := json.Unmarshal(data, &input); err != nil {
 		return false, nil
 	}
-	if input.ToolName != "Bash" {
+	if !isShellTool(input.ToolName) {
 		return false, nil
 	}
 
@@ -60,12 +74,38 @@ func RunPre(r io.Reader, w io.Writer, gtkaiBin string) (bool, error) {
 	}
 
 	toolInput["command"] = rewritten
-	out, err := json.Marshal(preOutput{
-		HookSpecificOutput: preSpecific{
-			HookEventName: "PreToolUse",
-			UpdatedInput:  toolInput,
-		},
-	})
+	return writePre(w, agent, toolInput, rewritten)
+}
+
+func writePre(w io.Writer, agent Agent, toolInput map[string]any, rewritten string) (bool, error) {
+	var out []byte
+	var err error
+	switch agent {
+	case AgentClaudeCode:
+		out, err = json.Marshal(preOutput{
+			HookSpecificOutput: preSpecific{
+				HookEventName: "PreToolUse",
+				UpdatedInput:  toolInput,
+			},
+		})
+	case AgentCodex:
+		out, err = json.Marshal(preOutput{
+			HookSpecificOutput: preSpecific{
+				HookEventName:      "PreToolUse",
+				PermissionDecision: "allow",
+				UpdatedInput:       toolInput,
+			},
+		})
+	case AgentCursor:
+		out, err = json.Marshal(cursorPreOutput{
+			Permission:   "allow",
+			UpdatedInput: toolInput,
+		})
+	case AgentOpenCode:
+		out, err = json.Marshal(openCodePreOutput{Command: rewritten})
+	default:
+		return false, fmt.Errorf("unknown agent %q", agent)
+	}
 	if err != nil {
 		return false, fmt.Errorf("marshal: %w", err)
 	}

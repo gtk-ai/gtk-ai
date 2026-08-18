@@ -1,7 +1,7 @@
 {
   "name": "gtk-ai",
   "metadata": {
-    "description": "PreToolUse rewrite and PostToolUse filtering for Claude Code. Applies rule-based output reduction to Bash, git, grep, find, ls, Read, and MCP tools."
+    "description": "PreToolUse rewrite and PostToolUse filtering for Claude Code, Cursor, Codex, and OpenCode. Applies rule-based output reduction to shell, git, grep, find, ls, Read, and MCP tools."
   },
   "owner": {
     "name": "jmeiracorbal",
@@ -10,8 +10,8 @@
   "plugins": [
     {
       "name": "gtk-ai",
-      "description": "PreToolUse rewrite plus PostToolUse filtering for Bash, git, grep, find, ls, Read, and MCP tool output.",
-      "version": "0.9.0",
+      "description": "PreToolUse rewrite plus PostToolUse filtering for shell, git, grep, find, ls, Read, and MCP tool output.",
+      "version": "0.10.0",
       "author": {
         "name": "jmeiracorbal"
       },

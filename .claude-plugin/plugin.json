@@ -1,7 +1,7 @@
 {
   "name": "gtk-ai",
-  "description": "PreToolUse rewrite plus PostToolUse filtering for Bash, git, grep, find, ls, Read, and MCP tool output.",
-  "version": "0.9.0",
+  "description": "PreToolUse rewrite plus PostToolUse filtering for shell, git, grep, find, ls, Read, and MCP tool output.",
+  "version": "0.10.0",
   "author": {
     "name": "jmeiracorbal"
   },
