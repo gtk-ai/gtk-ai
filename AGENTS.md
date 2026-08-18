@@ -9,7 +9,7 @@ Two independent phases:
 
 Never collapse both phases into one. The plugin depends on the binary. The binary does not configure Claude Code.
 
-Target flow and remaining work: `ROADMAP.md`. `0.5.0` completes §2: PreToolUse proxy for registered Bash commands; `PostToolUse` only for Read and MCP.
+Target flow and remaining work: `ROADMAP.md`. `0.6.0` adds the `go test` runner (§3).
 
 ## Versions
 
