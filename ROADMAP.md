@@ -1,6 +1,6 @@
 # Roadmap: gtk-ai vs rtk 0.42.4
 
-Compared against [rtk-ai/rtk](https://github.com/rtk-ai/rtk) `0.42.4` (`ba7a9ce`). gtk-ai is at `0.6.0`.
+Compared against [rtk-ai/rtk](https://github.com/rtk-ai/rtk) `0.42.4` (`ba7a9ce`). gtk-ai is at `0.7.0`.
 
 **Product decision (2026-08-17):** gtk follows the same path as rtk. It rewrites the command **before** execution (`PreToolUse` → `git status` becomes `gtkai git status`). gtkai runs the real binary, injects flags, and filters the output. Post-filtering remains only for Claude Code native tools that do not go through Bash (`Read`, MCP, `Grep`, `Glob`).
 
@@ -108,7 +108,7 @@ Only after the proxy and the corrections. Here rewrite does inject flags (`go te
 | Module | Commands | Rewrite | Filter |
 |---|---|---|---|
 | `gotest` | `go test`, `go build`, `go vet` | `go test -json` unless `-bench` or `-json` is already present | `ok` packages → count; full `FAIL` — **done in 0.6.0** |
-| `cargo` | `test`, `build`, `clippy`, `check` | by subcommand | errors/failures; collapse `Compiling` |
+| `cargo` | `test`, `build`, `clippy`, `check` | by subcommand | errors/failures; collapse `Compiling` — **done in 0.7.0** |
 | `pytest` | `pytest`, `python -m pytest` | — | failures + short traceback |
 | `npmtest` | `npm test`, `pnpm test`, `npx vitest`/`jest` | — | failures; strip ANSI |
 | `docker` | `ps`, `images`, `logs`, `compose ps/logs` | — | essential columns; capped logs |
@@ -207,14 +207,14 @@ Done when: native `gtkai/gtkai-*` filters use the same registry; install/uninsta
 
 ## Current vs target
 
-| | gtk-ai 0.6.0 | Remaining |
+| | gtk-ai 0.7.0 | Remaining |
 |---|---|---|
 | Bash | `PreToolUse` rewrites registered commands to `gtkai …`; the binary runs and filters | Bash removed from `PostToolUse` (0.5.0) |
 | Filter identity | Flat `registry.Get("ls")` | Namespaced `author/gtkai-<command>`; active = most recent install |
 | `Rewrite()` | Injects flags for `git status`, `git log`, `ls`, `grep`, `go test -json` | Runners (cargo, pytest, …); third-party filters via `filter install` |
 | `Read` / MCP | `PostToolUse` | `/* */` on Read; native `Grep`/`Glob` |
 | `gain` | Every proxy execution | Per-filter attribution by `id` |
-| Commands | find, ls, git (incl. show/write/stash), grep, rg, cat/head/tail, tree, go test/build/vet, Read, MCP | cargo, pytest, npm, docker; filter plugin registry (§4) |
+| Commands | find, ls, git (incl. show/write/stash), grep, rg, cat/head/tail, tree, go test/build/vet, cargo test/build/clippy/check, Read, MCP | pytest, npm, docker; filter plugin registry (§4) |
 
 Filtering stays heuristic. No semantic compression.
 
@@ -236,7 +236,7 @@ Filtering stays heuristic. No semantic compression.
 
 1. PreToolUse proxy + end-to-end `git status` (section 1) — **done in 0.4.0**.
 2. Corrections to current modules + `cat`/`head`/`tail`/`tree` + remaining git (section 2) — **done in 0.5.0**.
-3. Runners (section 3) — **`go test`/`build`/`vet` done in 0.6.0**; cargo, pytest, npm, docker remain.
+3. Runners (section 3) — **`go test`/`build`/`vet` done in 0.6.0**; **cargo done in 0.7.0**; pytest, npm, docker remain.
 4. Filter plugin registry + install/uninstall/list + migrate natives to `gtkai/gtkai-*` (section 4).
 5. Ecosystem commands as third-party filters according to `gain` (section 3 ecosystem).
 

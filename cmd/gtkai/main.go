@@ -12,6 +12,7 @@ import (
 	"github.com/jmeiracorbal/gtk-ai/modules/gain"
 	"github.com/jmeiracorbal/gtk-ai/modules/mcpscan"
 
+	_ "github.com/jmeiracorbal/gtk-ai/modules/cargo"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/find"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/go"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/git"
@@ -22,7 +23,7 @@ import (
 	_ "github.com/jmeiracorbal/gtk-ai/modules/tree"
 )
 
-const version = "0.6.0"
+const version = "0.7.0"
 
 func usage() {
 	fmt.Fprintf(os.Stderr, `gtkai %s
