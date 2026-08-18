@@ -1,5 +1,5 @@
 #!/bin/sh
-# gtkai PreToolUse hook for Claude Code.
+# gtkai PreToolUse hook for Codex CLI (matcher Bash and shell aliases).
 
 GTKAI=$(command -v gtkai 2>/dev/null)
 if [ -z "$GTKAI" ]; then
@@ -12,4 +12,4 @@ if [ -z "$GTKAI" ]; then
 fi
 
 [ -z "$GTKAI" ] && exit 0
-exec "$GTKAI" hook-pre --agent=claudecode
+exec "$GTKAI" hook-pre --agent=codex

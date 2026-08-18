@@ -5,11 +5,11 @@
 Two independent phases:
 
 1. **Go binary** (`gtkai`): command proxy and token reduction. PreToolUse rewrites `git status` to `gtkai git status`; the binary runs the real command, injects flags, and filters output.
-2. **Claude Code plugin**: registers hooks (`PreToolUse` for Bash, `PostToolUse` for Read/MCP), templates, and the include in the global `CLAUDE.md`.
+2. **Agent integrations**: Claude Code plugin, Cursor hooks, Codex hooks, and the OpenCode plugin. Each one registers hooks and invokes the binary.
 
-Never collapse both phases into one. The plugin depends on the binary. The binary does not configure Claude Code.
+Never collapse both phases into one. The integrations depend on the binary. The binary does not write agent config files; `install.sh` does.
 
-Target flow and remaining work: `ROADMAP.md`. `0.9.0` completes §3 runners (npm, docker).
+Target flow and remaining work: `ROADMAP.md`. `0.10.0` adds Cursor, Codex, and OpenCode hook integrations. `0.9.0` completed §3 runners (npm, docker).
 
 ## Versions
 

@@ -13,7 +13,7 @@ import (
 func TestPreRewritesGitStatus(t *testing.T) {
 	payload := `{"tool_name":"Bash","tool_input":{"command":"git status","description":"show status"}}`
 	var out bytes.Buffer
-	ok, err := hook.RunPre(strings.NewReader(payload), &out, "gtkai")
+	ok, err := hook.RunPre(strings.NewReader(payload), &out, "gtkai", hook.AgentClaudeCode)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func TestPreRewritesGitStatus(t *testing.T) {
 func TestPreLeavesEcho(t *testing.T) {
 	payload := `{"tool_name":"Bash","tool_input":{"command":"echo hi"}}`
 	var out bytes.Buffer
-	ok, err := hook.RunPre(strings.NewReader(payload), &out, "gtkai")
+	ok, err := hook.RunPre(strings.NewReader(payload), &out, "gtkai", hook.AgentClaudeCode)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +58,7 @@ func TestPreLeavesEcho(t *testing.T) {
 func TestPreLeavesGtkai(t *testing.T) {
 	payload := `{"tool_name":"Bash","tool_input":{"command":"gtkai git status"}}`
 	var out bytes.Buffer
-	ok, err := hook.RunPre(strings.NewReader(payload), &out, "gtkai")
+	ok, err := hook.RunPre(strings.NewReader(payload), &out, "gtkai", hook.AgentClaudeCode)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +68,7 @@ func TestPreLeavesGtkai(t *testing.T) {
 }
 
 func TestPreEmptyBin(t *testing.T) {
-	_, err := hook.RunPre(strings.NewReader(`{"tool_name":"Bash","tool_input":{"command":"git status"}}`), &bytes.Buffer{}, "")
+	_, err := hook.RunPre(strings.NewReader(`{"tool_name":"Bash","tool_input":{"command":"git status"}}`), &bytes.Buffer{}, "", hook.AgentClaudeCode)
 	if err == nil {
 		t.Fatal("empty gtkai path must fail")
 	}
@@ -77,7 +77,7 @@ func TestPreEmptyBin(t *testing.T) {
 func TestPreIgnoresRead(t *testing.T) {
 	payload := `{"tool_name":"Read","tool_input":{"file_path":"x.go"}}`
 	var out bytes.Buffer
-	ok, err := hook.RunPre(strings.NewReader(payload), &out, "gtkai")
+	ok, err := hook.RunPre(strings.NewReader(payload), &out, "gtkai", hook.AgentClaudeCode)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func TestPreRewritesRegisteredBash(t *testing.T) {
 	for _, cmd := range cases {
 		payload := fmt.Sprintf(`{"tool_name":"Bash","tool_input":{"command":%q}}`, cmd)
 		var out bytes.Buffer
-		ok, err := hook.RunPre(strings.NewReader(payload), &out, "gtkai")
+		ok, err := hook.RunPre(strings.NewReader(payload), &out, "gtkai", hook.AgentClaudeCode)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -108,5 +108,94 @@ func TestPostSkipsGtkaiCommand(t *testing.T) {
 	modified, _ := runHook(t, bashPayload("gtkai git status", strings.Repeat("M  file.go\n", 40)))
 	if modified {
 		t.Fatal("post-hook must not filter gtkai proxy output")
+	}
+}
+
+func TestPreEmptyAgent(t *testing.T) {
+	_, err := hook.RunPre(strings.NewReader(`{"tool_name":"Bash","tool_input":{"command":"git status"}}`), &bytes.Buffer{}, "gtkai", "")
+	if err == nil {
+		t.Fatal("empty agent must fail")
+	}
+}
+
+func TestPreRewritesCursorShell(t *testing.T) {
+	payload := `{"tool_name":"Shell","tool_input":{"command":"git status","working_directory":"/proj"}}`
+	var out bytes.Buffer
+	ok, err := hook.RunPre(strings.NewReader(payload), &out, "gtkai", hook.AgentCursor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok {
+		t.Fatal("expected rewrite")
+	}
+	var result struct {
+		Permission   string `json:"permission"`
+		UpdatedInput struct {
+			Command          string `json:"command"`
+			WorkingDirectory string `json:"working_directory"`
+		} `json:"updated_input"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Permission != "allow" {
+		t.Fatalf("permission %q", result.Permission)
+	}
+	if result.UpdatedInput.Command != "gtkai git status" {
+		t.Fatalf("command %q", result.UpdatedInput.Command)
+	}
+	if result.UpdatedInput.WorkingDirectory != "/proj" {
+		t.Fatalf("working_directory dropped: %q", result.UpdatedInput.WorkingDirectory)
+	}
+}
+
+func TestPreRewritesCodex(t *testing.T) {
+	payload := `{"tool_name":"local_shell","tool_input":{"command":"git status"}}`
+	var out bytes.Buffer
+	ok, err := hook.RunPre(strings.NewReader(payload), &out, "gtkai", hook.AgentCodex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok {
+		t.Fatal("expected rewrite")
+	}
+	var result struct {
+		HookSpecificOutput struct {
+			HookEventName      string `json:"hookEventName"`
+			PermissionDecision string `json:"permissionDecision"`
+			UpdatedInput       struct {
+				Command string `json:"command"`
+			} `json:"updatedInput"`
+		} `json:"hookSpecificOutput"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.HookSpecificOutput.PermissionDecision != "allow" {
+		t.Fatalf("permissionDecision %q", result.HookSpecificOutput.PermissionDecision)
+	}
+	if result.HookSpecificOutput.UpdatedInput.Command != "gtkai git status" {
+		t.Fatalf("command %q", result.HookSpecificOutput.UpdatedInput.Command)
+	}
+}
+
+func TestPreRewritesOpenCode(t *testing.T) {
+	payload := `{"tool_name":"bash","tool_input":{"command":"ls -la"}}`
+	var out bytes.Buffer
+	ok, err := hook.RunPre(strings.NewReader(payload), &out, "gtkai", hook.AgentOpenCode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok {
+		t.Fatal("expected rewrite")
+	}
+	var result struct {
+		Command string `json:"command"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(result.Command, "gtkai ls") {
+		t.Fatalf("command %q", result.Command)
 	}
 }

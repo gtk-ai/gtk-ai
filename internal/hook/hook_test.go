@@ -55,7 +55,7 @@ func mcpPayload(toolName, text string) string {
 func runHook(t *testing.T, payload string) (modified bool, output string) {
 	t.Helper()
 	var out bytes.Buffer
-	ok, err := hook.Run(strings.NewReader(payload), &out)
+	ok, err := hook.Run(strings.NewReader(payload), &out, hook.AgentClaudeCode)
 	if err != nil {
 		t.Fatalf("hook.Run error: %v", err)
 	}

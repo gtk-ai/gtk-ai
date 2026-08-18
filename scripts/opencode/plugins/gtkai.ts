@@ -1,0 +1,90 @@
+import type { Plugin } from "@opencode-ai/plugin"
+import { existsSync } from "node:fs"
+
+function findGtkai(): string | null {
+  const fromPath = Bun.which("gtkai")
+  if (fromPath) return fromPath
+  const home = Bun.env.HOME
+  if (!home) return null
+  for (const candidate of [
+    `${home}/.local/bin/gtkai`,
+    "/usr/local/bin/gtkai",
+    "/opt/homebrew/bin/gtkai",
+  ]) {
+    if (existsSync(candidate)) return candidate
+  }
+  return null
+}
+
+function runHook(gtkai: string, args: string[], payload: unknown): string {
+  const r = Bun.spawnSync([gtkai, ...args], {
+    stdin: new TextEncoder().encode(JSON.stringify(payload)),
+    stderr: "ignore",
+  })
+  if (r.exitCode !== 0 || !r.stdout) return ""
+  return r.stdout.toString().trim()
+}
+
+export const GtkAI: Plugin = async () => {
+  const gtkai = findGtkai()
+  const argsByCall = new Map<string, Record<string, unknown>>()
+
+  return {
+    "tool.execute.before": async (input, output) => {
+      argsByCall.set(input.callID, output.args as Record<string, unknown>)
+      if (!gtkai) return
+      if (input.tool !== "bash" && input.tool !== "shell") return
+      const command = (output.args as { command?: unknown }).command
+      if (typeof command !== "string" || command === "") return
+
+      const raw = runHook(gtkai, ["hook-pre", "--agent=opencode"], {
+        tool_name: input.tool,
+        tool_input: output.args,
+      })
+      if (raw === "") return
+      let parsed: { command?: unknown }
+      try {
+        parsed = JSON.parse(raw) as { command?: unknown }
+      } catch {
+        return
+      }
+      if (typeof parsed.command !== "string" || parsed.command === "") return
+      output.args.command = parsed.command
+    },
+
+    "tool.execute.after": async (input, output) => {
+      const args = argsByCall.get(input.callID)
+      argsByCall.delete(input.callID)
+      if (!gtkai) return
+      if (args === undefined) return
+      if (input.tool === "bash" || input.tool === "shell") return
+      if (output.output === "") return
+
+      const isRead = input.tool === "read"
+      const isMCP = input.tool.startsWith("mcp__") || input.tool.startsWith("MCP:")
+      if (!isRead && !isMCP) return
+
+      let toolInput: Record<string, unknown> = args
+      if (isRead) {
+        const filePath = args.filePath
+        if (typeof filePath !== "string" || filePath === "") return
+        toolInput = { file_path: filePath }
+      }
+
+      const raw = runHook(gtkai, ["hook-post", "--agent=opencode"], {
+        tool_name: isRead ? "Read" : input.tool,
+        tool_input: toolInput,
+        tool_response: [{ type: "text", text: output.output }],
+      })
+      if (raw === "") return
+      let parsed: { output?: unknown }
+      try {
+        parsed = JSON.parse(raw) as { output?: unknown }
+      } catch {
+        return
+      }
+      if (typeof parsed.output !== "string" || parsed.output === "") return
+      output.output = parsed.output
+    },
+  }
+}

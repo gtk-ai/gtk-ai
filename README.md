@@ -1,26 +1,29 @@
 # gtk-ai
 
 ![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go&logoColor=white)
-![Version](https://img.shields.io/badge/version-0.9.0-blue?style=flat)
+![Version](https://img.shields.io/badge/version-0.10.0-blue?style=flat)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue?style=flat)
-![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin%20compatible-blueviolet?style=flat)
+![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-blueviolet?style=flat)
+![Cursor](https://img.shields.io/badge/Cursor-hooks-000000?style=flat)
+![Codex](https://img.shields.io/badge/Codex-hooks-412991?style=flat)
+![OpenCode](https://img.shields.io/badge/OpenCode-plugin-6D28D9?style=flat)
 ![Build](https://img.shields.io/badge/build-passing-brightgreen?style=flat)
 
-`gtk-ai` is a two-part integration for Claude Code:
+`gtk-ai` is a two-part integration:
 
-- the `gtkai` Go binary, which rewrites Bash commands before they run and filters their output
-- the Claude plugin, which registers `PreToolUse` and `PostToolUse` hooks and invokes `gtkai`
+- the `gtkai` Go binary, which rewrites shell commands before they run and filters their output
+- per-agent hooks, which register `PreToolUse` / `PostToolUse` (or the agent equivalent) and invoke `gtkai`
 
-Registered Bash commands are rewritten to `gtkai <cmd>` before execution. gtkai runs the real binary, injects compact flags when needed, and filters stdout. `Read` and MCP still go through `PostToolUse`.
+Registered shell commands are rewritten to `gtkai <cmd>` before execution. gtkai runs the real binary, injects compact flags when needed, and filters stdout. On Claude Code and OpenCode, `Read` and MCP still go through post-tool hooks.
 
 ```text
-Claude → Bash("git status")
-              ↓ PreToolUse → gtkai hook-pre
+Agent → Shell("git status")
+              ↓ PreToolUse → gtkai hook-pre --agent=<agent>
          command becomes gtkai git status
               ↓ gtkai runs git status --porcelain -b
          compact grouped status
               ↓
-         Claude receives filtered output
+         Agent receives filtered output
 ```
 
 ## Benchmark
@@ -42,10 +45,7 @@ Savings grow with output size. Small outputs may not be reduced.
 
 ## Installation
 
-gtk-ai requires both parts:
-
-1. the `gtkai` Go binary
-2. the Claude plugin that registers the hook and calls the binary
+gtk-ai requires the `gtkai` binary plus one integration per coding agent. The installer default is `--agent=auto`: it configures every compatible agent it finds on the machine.
 
 ### Option A: install script
 
@@ -53,13 +53,22 @@ gtk-ai requires both parts:
 curl -sSL https://raw.githubusercontent.com/jmeiracorbal/gtk-ai/main/install.sh | sh
 ```
 
-The script installs the binary, registers the marketplace, and prepares the Claude Code integration. When it finishes, run:
+Explicit targets:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/jmeiracorbal/gtk-ai/main/install.sh | sh -s -- --agent=cursor
+curl -sSL https://raw.githubusercontent.com/jmeiracorbal/gtk-ai/main/install.sh | sh -s -- --agent=codex
+curl -sSL https://raw.githubusercontent.com/jmeiracorbal/gtk-ai/main/install.sh | sh -s -- --agent=opencode
+curl -sSL https://raw.githubusercontent.com/jmeiracorbal/gtk-ai/main/install.sh | sh -s -- --agent=all
+```
+
+Claude Code still needs the plugin after the marketplace is registered:
 
 ```bash
 claude plugin install -s user gtk-ai@gtk-ai
 ```
 
-Then restart Claude Code.
+Then restart the agent.
 
 ### Option B: build from source
 
@@ -71,19 +80,22 @@ cd gtk-ai
 go build -o ~/.local/bin/gtkai ./cmd/gtkai/
 ```
 
-Then configure the Claude Code side without reinstalling the binary:
+Then configure agents without reinstalling the binary:
 
 ```bash
-GTKAI_CLAUDE_ONLY=1 sh install.sh
+GTKAI_SKIP_BINARY=1 sh install.sh -- --agent=all
 ```
 
-When it finishes, install the plugin:
+For Claude Code only, `GTKAI_CLAUDE_ONLY=1 sh install.sh` still works and implies `--agent=claudecode`.
 
-```bash
-claude plugin install -s user gtk-ai@gtk-ai
-```
+### Agent surfaces
 
-Restart Claude Code when done.
+| | Claude Code | Cursor | Codex | OpenCode |
+|---|---|---|---|---|
+| **Hooks** | plugin `PreToolUse` / `PostToolUse` | `~/.cursor/hooks/` | `~/.codex/hooks/` | `~/.config/opencode/plugins/gtkai.ts` |
+| **Hook config** | plugin `hooks.json` | `~/.cursor/hooks.json` | `~/.codex/hooks.json` | global plugin |
+| **Shell rewrite** | matcher `Bash` | matcher `Shell` | matcher `Bash` and shell aliases | `tool.execute.before` |
+| **Read / MCP post** | yes | MCP only | shell rewrite only | `read` and MCP tools |
 
 ## Modules
 
@@ -147,12 +159,13 @@ To identify which tools to exempt, check the tool names returned by your MCP ser
 ## Commands
 
 ```text
-gtkai hook-pre      PreToolUse handler — rewrites Bash commands to gtkai
-gtkai hook-post     PostToolUse handler — filters Read and MCP only
-gtkai git status    Proxy: run a registered command through gtkai
-gtkai mcp-scan      List MCP server tools, suggest passthrough prefixes
-gtkai gain          Token savings analytics
-gtkai version       Print version
+gtkai hook-pre --agent=<agent>   PreToolUse handler — rewrites shell commands to gtkai
+gtkai hook-post --agent=<agent>  PostToolUse handler — filters Read and MCP
+gtkai json-merge <file>          Deep-merge JSON from stdin into an agent config file
+gtkai git status                 Proxy: run a registered command through gtkai
+gtkai mcp-scan                   List MCP server tools, suggest passthrough prefixes
+gtkai gain                       Token savings analytics
+gtkai version                    Print version
 ```
 
 ## Architecture
@@ -163,10 +176,11 @@ gtk-ai/
 ├── internal/
 │   ├── registry/           # Module interface + Register() + EstimateTokens()
 │   ├── matchgroup/         # shared grep/rg grouping
-│   ├── shell/              # Bash command rewrite
+│   ├── shell/              # shell command rewrite
 │   ├── proxy/              # execute + filter + gain
 │   ├── text/               # ANSI strip
-│   └── hook/               # PreToolUse and PostToolUse handlers
+│   ├── jsonmerge/          # installer config merge
+│   └── hook/               # PreToolUse and PostToolUse handlers (per-agent JSON)
 ├── modules/
 │   ├── find/               # find output filter
 │   ├── ls/                 # ls output filter
@@ -175,9 +189,11 @@ gtk-ai/
 │   ├── readcmd/            # cat/head/tail via read.FilterContent
 │   ├── tree/               # tree output filter
 │   └── gain/               # SQLite token savings analytics
-└── plugin/
-    ├── hooks/              # Claude plugin hook registration
-    └── scripts/            # scripts that invoke gtkai from Claude's hook system
+├── plugin/                 # Claude Code plugin (hooks + scripts)
+└── scripts/
+    ├── cursor/             # Cursor hook scripts + rule
+    ├── codex/              # Codex hook scripts
+    └── opencode/           # OpenCode plugin
 ```
 
 The `registry` package is the only shared dependency between modules. Modules never import each other.
