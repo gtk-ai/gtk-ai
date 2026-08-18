@@ -1,6 +1,6 @@
 # Roadmap: gtk-ai vs rtk 0.42.4
 
-Compared against [rtk-ai/rtk](https://github.com/rtk-ai/rtk) `0.42.4` (`ba7a9ce`). gtk-ai is at `0.9.0`.
+Compared against [rtk-ai/rtk](https://github.com/rtk-ai/rtk) `0.42.4` (`ba7a9ce`). gtk-ai is at `0.10.0`.
 
 **Product decision (2026-08-17):** gtk follows the same path as rtk. It rewrites the command **before** execution (`PreToolUse` → `git status` becomes `gtkai git status`). gtkai runs the real binary, injects flags, and filters the output. Post-filtering remains only for Claude Code native tools that do not go through Bash (`Read`, MCP, `Grep`, `Glob`).
 
@@ -207,8 +207,9 @@ Done when: native `gtkai/gtkai-*` filters use the same registry; install/uninsta
 
 ## Current vs target
 
-| | gtk-ai 0.9.0 | Remaining |
+| | gtk-ai 0.10.0 | Remaining |
 |---|---|---|
+| Agents | Claude Code plugin; Cursor / Codex hooks; OpenCode plugin | — |
 | Bash | `PreToolUse` rewrites registered commands to `gtkai …`; the binary runs and filters | Bash removed from `PostToolUse` (0.5.0) |
 | Filter identity | Flat `registry.Get("ls")` | Namespaced `author/gtkai-<command>`; active = most recent install |
 | `Rewrite()` | Injects flags for `git status`, `git log`, `ls`, `grep`, `go test -json` | Runners (cargo, pytest, …); third-party filters via `filter install` |
@@ -237,7 +238,8 @@ Filtering stays heuristic. No semantic compression.
 1. PreToolUse proxy + end-to-end `git status` (section 1) — **done in 0.4.0**.
 2. Corrections to current modules + `cat`/`head`/`tail`/`tree` + remaining git (section 2) — **done in 0.5.0**.
 3. Runners (section 3) — **done in 0.9.0** (go, cargo, pytest, npm, docker).
-4. Filter plugin registry + install/uninstall/list + migrate natives to `gtkai/gtkai-*` (section 4).
-5. Ecosystem commands as third-party filters according to `gain` (section 3 ecosystem).
+4. Multi-agent hooks (Cursor, Codex, OpenCode) — **done in 0.10.0**.
+5. Filter plugin registry + install/uninstall/list + migrate natives to `gtkai/gtkai-*` (section 4).
+6. Ecosystem commands as third-party filters according to `gain` (section 3 ecosystem).
 
 The git tag must match every version-bearing file (`cmd/gtkai/main.go`, plugin json, `mcpscan`, README).

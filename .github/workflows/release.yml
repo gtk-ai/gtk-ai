@@ -75,6 +75,10 @@ jobs:
           echo "Built:"
           ls -lh dist/
 
+          tar -czf dist/gtkai-scripts.tar.gz scripts
+          (cd dist && shasum -a 256 gtkai-scripts.tar.gz > gtkai-scripts.tar.gz.sha256)
+          echo "Packed scripts archive"
+
       - name: Generate SHA256 checksums
         run: |
           cd dist

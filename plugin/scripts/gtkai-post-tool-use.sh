@@ -13,4 +13,4 @@ if [ -z "$GTKAI" ]; then
 fi
 
 [ -z "$GTKAI" ] && exit 0
-exec "$GTKAI" hook-post
+exec "$GTKAI" hook-post --agent=claudecode
