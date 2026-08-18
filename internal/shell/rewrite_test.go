@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	_ "github.com/jmeiracorbal/gtk-ai/modules/find"
+	_ "github.com/jmeiracorbal/gtk-ai/modules/go"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/git"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/grep"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/ls"
@@ -11,6 +12,13 @@ import (
 	_ "github.com/jmeiracorbal/gtk-ai/modules/rg"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/tree"
 )
+
+func TestRewriteGoTest(t *testing.T) {
+	got, ok := Rewrite("go test ./...", "gtkai")
+	if !ok || got != "gtkai go test ./..." {
+		t.Fatalf("got %q ok=%v", got, ok)
+	}
+}
 
 func TestRewriteGitStatus(t *testing.T) {
 	got, ok := Rewrite("git status", "gtkai")
