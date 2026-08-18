@@ -9,12 +9,28 @@ import (
 	_ "github.com/jmeiracorbal/gtk-ai/modules/git"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/grep"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/ls"
+	_ "github.com/jmeiracorbal/gtk-ai/modules/docker"
+	_ "github.com/jmeiracorbal/gtk-ai/modules/npmtest"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/pytest"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/python"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/readcmd"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/rg"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/tree"
 )
+
+func TestRewriteNpmTest(t *testing.T) {
+	got, ok := Rewrite("npm test", "gtkai")
+	if !ok || got != "gtkai npm test" {
+		t.Fatalf("got %q ok=%v", got, ok)
+	}
+}
+
+func TestRewriteDockerPS(t *testing.T) {
+	got, ok := Rewrite("docker ps", "gtkai")
+	if !ok || got != "gtkai docker ps" {
+		t.Fatalf("got %q ok=%v", got, ok)
+	}
+}
 
 func TestRewritePytest(t *testing.T) {
 	got, ok := Rewrite("pytest -v", "gtkai")

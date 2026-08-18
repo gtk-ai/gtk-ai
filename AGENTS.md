@@ -9,7 +9,7 @@ Two independent phases:
 
 Never collapse both phases into one. The plugin depends on the binary. The binary does not configure Claude Code.
 
-Target flow and remaining work: `ROADMAP.md`. `0.8.0` adds the pytest runner (§3).
+Target flow and remaining work: `ROADMAP.md`. `0.9.0` completes §3 runners (npm, docker).
 
 ## Versions
 
