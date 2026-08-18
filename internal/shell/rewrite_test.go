@@ -3,6 +3,7 @@ package shell
 import (
 	"testing"
 
+	_ "github.com/jmeiracorbal/gtk-ai/modules/cargo"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/find"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/go"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/git"
@@ -12,6 +13,13 @@ import (
 	_ "github.com/jmeiracorbal/gtk-ai/modules/rg"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/tree"
 )
+
+func TestRewriteCargoTest(t *testing.T) {
+	got, ok := Rewrite("cargo test", "gtkai")
+	if !ok || got != "gtkai cargo test" {
+		t.Fatalf("got %q ok=%v", got, ok)
+	}
+}
 
 func TestRewriteGoTest(t *testing.T) {
 	got, ok := Rewrite("go test ./...", "gtkai")
