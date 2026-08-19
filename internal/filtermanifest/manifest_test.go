@@ -83,7 +83,7 @@ func TestValidateGtkaiCoreVersionUnknownConstraint(t *testing.T) {
 }
 
 func TestParseGtkaiDateManifest(t *testing.T) {
-	m, err := filtermanifest.ParseFile("../../filters/gtk-ai/gtkai-date/filter.json")
+	m, err := filtermanifest.ParseFile("../../filters/gtk-ai/gtkai-date/gtkai.json")
 	if err != nil {
 		t.Fatal(err)
 	}

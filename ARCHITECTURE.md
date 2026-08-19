@@ -206,9 +206,9 @@ Response (filter binary → core):
 
 `exit_code` is -1 when unknown (native tool post-hook). `changed` signals whether the core should use the rewritten value; unchanged responses short-circuit further processing.
 
-### filter.json manifest (required)
+### gtkai.json manifest (required)
 
-Every filter binary ships a `filter.json` at the root of its repository:
+Every filter module ships a `gtkai.json` manifest at the repository root:
 
 ```json
 {
@@ -232,7 +232,7 @@ Required fields: `id`, `filters`, `platforms`, `contract`, `gtkai-core-version`.
   - `"min"` — running `gtkai` must be `>= version`.
   - `"exact"` — running `gtkai` must match `version` exactly.
 
-**Filter version is not in the manifest.** It is resolved from the install ref — the git tag of the filter repository. Example: `gtkai filter install gtk-ai/gtkai-date@v0.10.0` installs tag `v0.10.0`; the core records that version in the registry at install time.
+**Module version is not in the manifest.** It is resolved from the install ref — the git tag of the filter repository. Example: `gtkai filter install gtk-ai/gtkai-date@v0.10.0` installs tag `v0.10.0`; the core records that version in the registry at install time.
 
 On install, the core validates `gtkai-core-version` against the running binary:
 
@@ -255,25 +255,28 @@ default:
 
 `gtkai filter install` performs these checks in order before committing anything to the registry:
 
-1. `filter.json` is present and parses without error.
-2. `id` matches the naming rule regex.
-3. `gtkai-core-version.version` is valid semver; running `gtkai` satisfies the `constraint` (see switch above).
-4. `contract` is `subprocess/v1`.
+1. Git tag/ref resolves to a valid semver (module version).
+2. `gtkai.json` is present and parses without error.
+3. `id` matches the naming rule regex.
+4. `contract` equals `subprocess/v1`.
 5. Running platform appears in `platforms`.
-6. Liveness check: spawn the binary with `{"operation":"rewrite","args":[],"output":"","exit_code":0}` and expect a valid response within 500 ms.
+6. `gtkai-core-version.version` is valid semver.
+7. `gtkai-core-version.constraint` is `"min"` or `"exact"`.
+8. Running `gtkai` satisfies the core version constraint (see switch above).
+9. Liveness check: spawn the binary with `{"operation":"rewrite","args":[],"output":"","exit_code":0}` and expect a valid response within 500 ms.
 
 Any failure aborts the install with a descriptive error. No partial state is written.
 
 ### Persistence
 
-Installed filters are recorded in `~/.gtk-ai/filters.db` (SQLite). The path is resolved via `internal/storage.Dir()`. Schema: `id`, `filters`, `version`, `contract`, `binary_path`, `installed_at`.
+Installed filters are recorded in `~/.gtk-ai/filters.db` (SQLite). The path is resolved via `internal/storage.Dir()`. Schema: `id`, `filters`, `version`, `contract`, `binary_path`, `installed_at`. The installed module version is stored from the Git tag, not from the manifest.
 
 ### Binary layout
 
 ```
-~/.gtk-ai/filters/<id>/
-    <binary>
-    filter.json
+~/.gtk-ai/filters/gtk-ai/gtkai-date/
+    gtkai-date
+    gtkai.json
 ```
 
 Binaries are downloaded from the GitHub Releases page of the filter repository and stored under the namespaced path.

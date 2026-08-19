@@ -1,4 +1,4 @@
-// Package filtermanifest parses and validates external filter manifests (filter.json).
+// Package filtermanifest parses and validates external filter manifests (gtkai.json).
 package filtermanifest
 
 import (
@@ -10,7 +10,10 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-// Manifest is the required filter.json schema for subprocess/v1 filters.
+// ManifestFileName is the required manifest filename at the root of a filter repository.
+const ManifestFileName = "gtkai.json"
+
+// Manifest is the required gtkai.json schema for subprocess/v1 filters.
 type Manifest struct {
 	ID               string           `json:"id"`
 	Filters          []string         `json:"filters"`
@@ -25,15 +28,15 @@ type GtkaiCoreVersion struct {
 	Constraint string `json:"constraint"`
 }
 
-// ParseFile reads and unmarshals filter.json at path.
+// ParseFile reads and unmarshals gtkai.json at path.
 func ParseFile(path string) (*Manifest, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("read filter.json: %w", err)
+		return nil, fmt.Errorf("read gtkai.json: %w", err)
 	}
 	var m Manifest
 	if err := json.Unmarshal(data, &m); err != nil {
-		return nil, fmt.Errorf("parse filter.json: %w", err)
+		return nil, fmt.Errorf("parse gtkai.json: %w", err)
 	}
 	return &m, nil
 }
