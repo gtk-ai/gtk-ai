@@ -42,7 +42,7 @@ Usage:
   gtkai <module> [args...]         Run a registered command through the proxy
   gtkai mcp-scan                   List tools from all MCP servers, suggest passthrough prefixes
   gtkai gain                       Show token savings analytics
-  gtkai filter install <mod@ver>   Install an external filter module (go dependency)
+  gtkai filter install <mod@ver> [--replace]  Install an external filter module (go dependency)
   gtkai filter install-official <file> --core-version=<ver>  Install filters from official.json
   gtkai filter uninstall <id>      Remove an installed filter by full id
   gtkai filter list                List installed external filters (active marked)

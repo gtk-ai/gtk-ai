@@ -25,6 +25,7 @@ type Options struct {
 	Version     string
 	CoreVersion string
 	ReleaseRepo string
+	Replace     bool // allow replacing another active filter for the same argv0
 }
 
 // ParseRef splits module@version. Both parts are required.
@@ -69,6 +70,15 @@ func Install(opts Options) (*filterregistry.Record, error) {
 		return nil, fmt.Errorf("liveness: %w", err)
 	}
 
+	db, err := filterregistry.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+	if err := checkReplaceConflict(db, manifest.ID, manifest.Filters[0], opts.Replace); err != nil {
+		return nil, err
+	}
+
 	destDir, err := installDir(manifest.ID)
 	if err != nil {
 		return nil, err
@@ -98,20 +108,25 @@ func Install(opts Options) (*filterregistry.Record, error) {
 		InstalledAt:  time.Now(),
 	}
 
-	db, err := filterregistry.Open()
-	if err != nil {
-		return nil, err
-	}
-	defer db.Close()
-	if prev, err := db.Active(rec.Argv0); err != nil {
-		return nil, err
-	} else if prev != nil && prev.ID != rec.ID {
-		fmt.Fprintf(os.Stderr, "warning: replacing active filter %s with %s for command %q\n", prev.ID, rec.ID, rec.Argv0)
-	}
 	if err := db.Install(rec); err != nil {
 		return nil, err
 	}
 	return &rec, nil
+}
+
+func checkReplaceConflict(db *filterregistry.DB, id, argv0 string, replace bool) error {
+	prev, err := db.Active(argv0)
+	if err != nil {
+		return err
+	}
+	if prev == nil || prev.ID == id {
+		return nil
+	}
+	if !replace {
+		return fmt.Errorf("active filter %s already handles %q; use --replace to install %s (or filter uninstall %s)", prev.ID, argv0, id, prev.ID)
+	}
+	fmt.Fprintf(os.Stderr, "replacing active filter %s with %s for command %q\n", prev.ID, id, argv0)
+	return nil
 }
 
 func resolveSource(opts Options, platform string) (srcDir, binary string, err error) {
@@ -314,6 +329,7 @@ func InstallOfficial(officialPath, coreVersion, releaseRepo string) ([]filterreg
 			Version:     f.Version,
 			CoreVersion: coreVersion,
 			ReleaseRepo: releaseRepo,
+			Replace:     true,
 		}
 		rec, err := Install(opts)
 		if err != nil {
