@@ -86,7 +86,7 @@ func TestValidateGtkaiCoreVersionUnknownConstraint(t *testing.T) {
 }
 
 func TestParseGtkaiDateManifest(t *testing.T) {
-	dir, err := downloadModuleDir("github.com/gtk-ai/gtkai-date@v0.10.1")
+	dir, err := downloadModuleDir("github.com/gtk-ai/date@v0.11.0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +94,7 @@ func TestParseGtkaiDateManifest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if m.ID != "gtk-ai/gtkai-date" {
+	if m.ID != "gtk-ai/date" {
 		t.Fatalf("id %q", m.ID)
 	}
 	if m.GtkaiCoreVersion.Constraint != "min" {

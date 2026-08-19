@@ -32,14 +32,14 @@ func TestInstallGtkaiDateRemote(t *testing.T) {
 	testhome.Isolated(t)
 
 	rec, err := filterinstall.Install(filterinstall.Options{
-		Module:      "github.com/gtk-ai/gtkai-date",
-		Version:     "v0.10.1",
+		Module:      "github.com/gtk-ai/date",
+		Version:     "v0.11.0",
 		CoreVersion: "0.10.0",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rec.ID != "gtk-ai/gtkai-date" {
+	if rec.ID != "gtk-ai/date" {
 		t.Fatalf("id %q", rec.ID)
 	}
 	if rec.Argv0 != "date" {

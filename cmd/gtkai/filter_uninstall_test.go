@@ -39,8 +39,8 @@ func TestFilterListMarksActive(t *testing.T) {
 	home := testhome.Isolated(t)
 
 	if _, err := filterinstall.Install(filterinstall.Options{
-		Module:      "github.com/gtk-ai/gtkai-date",
-		Version:     "v0.10.1",
+		Module:      "github.com/gtk-ai/date",
+		Version:     "v0.11.0",
 		CoreVersion: "0.10.0",
 	}); err != nil {
 		t.Fatal(err)
@@ -54,7 +54,7 @@ func TestFilterListMarksActive(t *testing.T) {
 		t.Fatal(err)
 	}
 	text := string(out)
-	if !strings.Contains(text, "gtk-ai/gtkai-date") {
+	if !strings.Contains(text, "gtk-ai/date") {
 		t.Fatalf("expected filter in list: %s", text)
 	}
 	if !strings.Contains(text, "active") {

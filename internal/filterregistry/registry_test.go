@@ -19,12 +19,12 @@ func TestInstallAndActive(t *testing.T) {
 	defer db.Close()
 
 	rec := filterregistry.Record{
-		ID:           "gtk-ai/gtkai-date",
-		Module:       "github.com/gtk-ai/gtkai-date",
-		Version:      "v0.10.1",
+		ID:           "gtk-ai/date",
+		Module:       "github.com/gtk-ai/date",
+		Version:      "v0.11.0",
 		Argv0:        "date",
 		Contract:     "subprocess/v1",
-		BinaryPath:   filepath.Join(home, "gtkai-date"),
+		BinaryPath:   filepath.Join(home, "date"),
 		ManifestPath: filepath.Join(home, "gtkai.json"),
 		InstalledAt:  time.Now(),
 	}
@@ -58,12 +58,12 @@ func TestUninstallRemovesFilter(t *testing.T) {
 	defer db.Close()
 
 	rec := filterregistry.Record{
-		ID:           "gtk-ai/gtkai-date",
-		Module:       "github.com/gtk-ai/gtkai-date",
-		Version:      "v0.10.1",
+		ID:           "gtk-ai/date",
+		Module:       "github.com/gtk-ai/date",
+		Version:      "v0.11.0",
 		Argv0:        "date",
 		Contract:     "subprocess/v1",
-		BinaryPath:   filepath.Join(home, "gtkai-date"),
+		BinaryPath:   filepath.Join(home, "date"),
 		ManifestPath: filepath.Join(home, "gtkai.json"),
 		InstalledAt:  time.Now(),
 	}
@@ -97,22 +97,22 @@ func TestUninstallPromotesPreviousActive(t *testing.T) {
 	defer db.Close()
 
 	older := filterregistry.Record{
-		ID:           "acme/gtkai-date",
-		Module:       "github.com/acme/gtkai-date",
+		ID:           "acme/date",
+		Module:       "github.com/acme/date",
 		Version:      "v0.1.0",
 		Argv0:        "date",
 		Contract:     "subprocess/v1",
-		BinaryPath:   filepath.Join(home, "acme-gtkai-date"),
+		BinaryPath:   filepath.Join(home, "acme-date"),
 		ManifestPath: filepath.Join(home, "acme-gtkai.json"),
 		InstalledAt:  time.Now().Add(-time.Hour),
 	}
 	newer := filterregistry.Record{
-		ID:           "gtk-ai/gtkai-date",
-		Module:       "github.com/gtk-ai/gtkai-date",
-		Version:      "v0.10.1",
+		ID:           "gtk-ai/date",
+		Module:       "github.com/gtk-ai/date",
+		Version:      "v0.11.0",
 		Argv0:        "date",
 		Contract:     "subprocess/v1",
-		BinaryPath:   filepath.Join(home, "gtkai-date"),
+		BinaryPath:   filepath.Join(home, "date"),
 		ManifestPath: filepath.Join(home, "gtkai.json"),
 		InstalledAt:  time.Now(),
 	}
@@ -144,7 +144,7 @@ func TestUninstallMissing(t *testing.T) {
 	}
 	defer db.Close()
 
-	if _, err := db.Uninstall("missing/gtkai-date"); err == nil {
+	if _, err := db.Uninstall("missing/date"); err == nil {
 		t.Fatal("expected error for missing filter")
 	}
 }

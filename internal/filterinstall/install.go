@@ -130,7 +130,7 @@ func checkReplaceConflict(db *filterregistry.DB, id, argv0 string, replace bool)
 }
 
 func resolveSource(opts Options, platform string) (srcDir, binary string, err error) {
-	if prebuilt, ok := tryPrebuilt(opts.ReleaseRepo, opts.Version, platform); ok {
+	if prebuilt, ok := tryPrebuilt(opts.Module, opts.Version, platform); ok {
 		srcDir, err = fetchGoModule(opts.Module, opts.Version)
 		if err != nil {
 			return "", "", err
@@ -148,17 +148,19 @@ func resolveSource(opts Options, platform string) (srcDir, binary string, err er
 	return srcDir, binary, nil
 }
 
-func tryPrebuilt(releaseRepo, version, platform string) (path string, ok bool) {
-	if releaseRepo == "" {
+func tryPrebuilt(module, version, platform string) (path string, ok bool) {
+	if module == "" {
 		return "", false
 	}
+	repo := strings.TrimPrefix(module, "github.com/")
+	binName := filepath.Base(module)
 	osName, arch := splitPlatform(platform)
 	tag := version
 	if !strings.HasPrefix(tag, "v") {
 		tag = "v" + tag
 	}
-	url := fmt.Sprintf("https://github.com/%s/releases/download/%s/gtkai-date-%s-%s", releaseRepo, tag, osName, arch)
-	tmp := filepath.Join(os.TempDir(), fmt.Sprintf("gtkai-date-prebuilt-%d", time.Now().UnixNano()))
+	url := fmt.Sprintf("https://github.com/%s/releases/download/%s/%s-%s-%s", repo, tag, binName, osName, arch)
+	tmp := filepath.Join(os.TempDir(), fmt.Sprintf("gtkai-filter-prebuilt-%d", time.Now().UnixNano()))
 	if err := downloadFile(url, tmp); err != nil {
 		return "", false
 	}

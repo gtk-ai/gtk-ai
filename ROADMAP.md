@@ -139,15 +139,15 @@ Today the registry collapses **command = filter** (`ls` → one `Module`). The t
 Every filter has a full name:
 
 ```text
-author/gtkai-<command>
+author/<cmd>
 ```
 
-Examples: `gtkai/gtkai-ls`, `gtkai/gtkai-git`, `jmeiracorbal/gtkai-ls`.
+Examples: `gtk-ai/ls`, `gtk-ai/git`, `gtk-ai/date`, `jmeiracorbal/ls`.
 
 - `author` — who owns the implementation.
-- `gtkai-<command>` — fixed suffix; `<command>` is the shell argv0 this filter is for (`ls`, `git`, `find`, …).
+- `<cmd>` — the shell argv0 this filter is for (`ls`, `git`, `date`, …).
 
-Built-in filters ship as `gtkai/gtkai-<command>` (compiled in). Third-party filters use the same naming rule.
+Built-in filters ship as `gtk-ai/<cmd>` (compiled in). Third-party filters use the same naming rule.
 
 The agent still runs `ls`, `git status`, … PreToolUse still rewrites to `gtkai ls`, `gtkai git status`. The namespace never appears in the Bash command Claude sees.
 
@@ -157,7 +157,7 @@ Each filter declares, at minimum:
 
 | Field | Meaning |
 |---|---|
-| `id` | Full name `author/gtkai-<command>` (must match the naming rule) |
+| `id` | Full name `author/<cmd>` (must match the naming rule) |
 | `filters` | Shell command intercepted (argv0 basename), e.g. `ls` |
 
 Behavior matches today’s `Module`: `Rewrite`, `FilterOutput`, optional `ExtraEnv`. The core keeps ANSI strip, `never_worse`, and `gain`; filters do not bypass them.
@@ -176,7 +176,7 @@ On **install**, when another filter already targets the same command:
 - With `--replace`, the newly installed filter becomes active; the previous filter stays installed but inactive.
 - `install-official` applies `--replace` implicitly.
 
-On **uninstall** (`gtkai filter uninstall author/gtkai-<command>` — full name only):
+On **uninstall** (`gtkai filter uninstall author/<cmd>` — full id only):
 
 - Remove that filter by `id`.
 - If **no filters remain** for that shell command → do not rewrite it in PreToolUse; pass through.
@@ -188,7 +188,7 @@ Listing installed filters and which one is active per command is part of this ph
 
 ```text
 gtkai filter install <path-or-package> [--replace]   # abort on command conflict unless --replace
-gtkai filter uninstall author/gtkai-ls   # by full id only
+gtkai filter uninstall gtk-ai/ls   # by full id only
 gtkai filter list                        # all filters; mark active per command
 ```
 
@@ -202,9 +202,9 @@ Exact transport (Go package, manifest + subprocess, …) is an implementation de
 
 Third-party filters are installed into gtkai’s filter registry; they do not register agent hooks.
 
-Done when: native `gtkai/gtkai-*` filters use the same registry; install/uninstall/list work; conflict and uninstall semantics above have tests; `hook-pre` resolves the active filter by shell command before rewrite.
+Done when: native `gtk-ai/*` filters use the same registry; install/uninstall/list work; conflict and uninstall semantics above have tests; `hook-pre` resolves the active filter by shell command before rewrite.
 
-**Status (0.10.x):** registry, `filter install|uninstall|list`, conflict warnings, active resolution, and subprocess transport are implemented. `gtk-ai/gtkai-date` is the first external-only filter. Remaining built-ins migrate gradually (see ARCHITECTURE.md § Built-in migration).
+**Status (0.11.x beta):** registry, `filter install|uninstall|list`, conflict/`--replace` semantics, active resolution, and subprocess transport are implemented. [gtk-ai/date](https://github.com/gtk-ai/date) is the first external-only filter and the reference template (`gtk-ai/<cmd>`). Remaining built-ins migrate gradually (see ARCHITECTURE.md § Built-in migration).
 
 ---
 
@@ -214,7 +214,7 @@ Done when: native `gtkai/gtkai-*` filters use the same registry; install/uninsta
 |---|---|---|
 | Agents | Claude Code plugin; Cursor / Codex hooks; OpenCode plugin | — |
 | Bash | `PreToolUse` rewrites registered commands to `gtkai …`; the binary runs and filters | Bash removed from `PostToolUse` (0.5.0) |
-| Filter identity | Namespaced `author/gtkai-<command>`; active = most recent install; built-in fallback | Migrate remaining built-ins to external repos |
+| Filter identity | Namespaced `author/<cmd>`; active = most recent install; built-in fallback | Migrate remaining built-ins to external repos |
 | `Rewrite()` | Injects flags for `git status`, `git log`, `ls`, `grep`, `go test -json` | Runners (cargo, pytest, …); third-party filters via `filter install` |
 | `Read` / MCP | `PostToolUse` | `/* */` on Read; native `Grep`/`Glob` |
 | `gain` | Every proxy execution | Per-filter attribution by `id` |
@@ -242,7 +242,7 @@ Filtering stays heuristic. No semantic compression.
 2. Corrections to current modules + `cat`/`head`/`tail`/`tree` + remaining git (section 2) — **done in 0.5.0**.
 3. Runners (section 3) — **done in 0.9.0** (go, cargo, pytest, npm, docker).
 4. Multi-agent hooks (Cursor, Codex, OpenCode) — **done in 0.10.0**.
-5. Filter plugin registry + install/uninstall/list + migrate natives to `gtkai/gtkai-*` (section 4) — **core done in 0.10.x**; per-command migration ongoing.
+5. Filter plugin registry + install/uninstall/list + migrate natives to `gtk-ai/*` (section 4) — **core done in 0.11.x beta**; per-command migration ongoing.
 6. Ecosystem commands as third-party filters according to `gain` (section 3 ecosystem).
 
 The git tag must match every version-bearing file (`cmd/gtkai/main.go`, plugin json, `mcpscan`, README).
