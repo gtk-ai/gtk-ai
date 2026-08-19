@@ -15,7 +15,7 @@ func TestFilterUninstallCLI(t *testing.T) {
 	testhome.Isolated(t)
 	root := moduleRoot(t)
 	official := filepath.Join(root, "filters/official.json")
-	installed, err := filterinstall.InstallOfficial(official, "0.10.0", "")
+	installed, err := filterinstall.InstallOfficial(official, "0.11.0-beta.1", "")
 	if err != nil {
 		t.Fatal(err)
 	}

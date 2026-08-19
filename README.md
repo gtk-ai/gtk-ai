@@ -1,7 +1,7 @@
 # gtk-ai
 
 ![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go&logoColor=white)
-![Version](https://img.shields.io/badge/version-0.10.0-blue?style=flat)
+![Version](https://img.shields.io/badge/version-0.11.0--beta.1-blue?style=flat)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue?style=flat)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-blueviolet?style=flat)
 ![Cursor](https://img.shields.io/badge/Cursor-hooks-000000?style=flat)
@@ -68,8 +68,6 @@ Claude Code still needs the plugin after the marketplace is registered:
 claude plugin install -s user gtk-ai@gtk-ai
 ```
 
-Then restart the agent.
-
 The install script also runs `gtkai filter install-official` for the filters listed in `filters/official.json` (currently `gtk-ai/gtkai-date`).
 
 Then restart the agent.
@@ -122,7 +120,7 @@ Some commands use **external filters** — standalone repos installed separately
 ```bash
 gtkai filter install github.com/gtk-ai/gtkai-date@v0.10.1
 gtkai filter install github.com/gtk-ai/gtkai-date@v0.10.1 --replace
-gtkai filter install-official filters/official.json --core-version=0.10.0
+gtkai filter install-official filters/official.json --core-version=0.11.0-beta.1
 gtkai filter list
 gtkai filter uninstall gtk-ai/gtkai-date
 ```
