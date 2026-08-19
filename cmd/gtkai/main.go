@@ -14,6 +14,7 @@ import (
 	"github.com/jmeiracorbal/gtk-ai/modules/gain"
 	"github.com/jmeiracorbal/gtk-ai/modules/mcpscan"
 
+	_ "github.com/jmeiracorbal/gtk-ai/filters/gtk-ai/gtkai-date"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/cargo"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/docker"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/find"

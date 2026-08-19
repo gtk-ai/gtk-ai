@@ -1,0 +1,8 @@
+{
+  "id": "gtk-ai/gtkai-date",
+  "filters": ["date"],
+  "version": "0.10.0",
+  "platforms": ["linux/amd64", "darwin/arm64"],
+  "contract": "subprocess/v1",
+  "min_gtkai_version": "0.10.0"
+}
