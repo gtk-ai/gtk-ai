@@ -30,7 +30,7 @@ import (
 	_ "github.com/jmeiracorbal/gtk-ai/modules/tree"
 )
 
-const version = "0.11.0"
+const version = "0.11.0-beta.2"
 
 func usage() {
 	fmt.Fprintf(os.Stderr, `gtkai %s
