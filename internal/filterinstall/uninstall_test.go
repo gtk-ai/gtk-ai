@@ -33,7 +33,55 @@ func captureStderr(t *testing.T, fn func()) string {
 	return buf.String()
 }
 
-func TestInstallConflictWarning(t *testing.T) {
+func TestInstallConflictAbortsWithoutReplace(t *testing.T) {
+	home := testhome.Isolated(t)
+
+	db, err := filterregistry.Open()
+	if err != nil {
+		t.Fatal(err)
+	}
+	existing := filterregistry.Record{
+		ID:           "acme/gtkai-date",
+		Module:       "github.com/acme/gtkai-date",
+		Version:      "v0.1.0",
+		Argv0:        "date",
+		Contract:     "subprocess/v1",
+		BinaryPath:   filepath.Join(home, ".gtk-ai/filters/acme/gtkai-date/acme-gtkai-date"),
+		ManifestPath: filepath.Join(home, ".gtk-ai/filters/acme/gtkai-date/gtkai.json"),
+		InstalledAt:  time.Now().Add(-time.Hour),
+	}
+	if err := db.Install(existing); err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+
+	_, err = filterinstall.Install(filterinstall.Options{
+		Module:      "github.com/gtk-ai/gtkai-date",
+		Version:     "v0.10.1",
+		CoreVersion: "0.10.0",
+	})
+	if err == nil {
+		t.Fatal("expected install to abort without --replace")
+	}
+	if !strings.Contains(err.Error(), "acme/gtkai-date") || !strings.Contains(err.Error(), "--replace") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	db, err = filterregistry.Open()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	active, err := db.Active("date")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if active == nil || active.ID != "acme/gtkai-date" {
+		t.Fatalf("active filter must remain unchanged: %+v", active)
+	}
+}
+
+func TestInstallConflictWithReplace(t *testing.T) {
 	home := testhome.Isolated(t)
 
 	db, err := filterregistry.Open()
@@ -60,15 +108,13 @@ func TestInstallConflictWarning(t *testing.T) {
 			Module:      "github.com/gtk-ai/gtkai-date",
 			Version:     "v0.10.1",
 			CoreVersion: "0.10.0",
+			Replace:     true,
 		}); err != nil {
 			t.Fatal(err)
 		}
 	})
-	if !strings.Contains(stderr, "warning:") {
-		t.Fatalf("expected conflict warning on stderr, got %q", stderr)
-	}
-	if !strings.Contains(stderr, "acme/gtkai-date") || !strings.Contains(stderr, "gtk-ai/gtkai-date") {
-		t.Fatalf("expected both filter ids in warning, got %q", stderr)
+	if !strings.Contains(stderr, "replacing active filter") {
+		t.Fatalf("expected replace notice on stderr, got %q", stderr)
 	}
 
 	db, err = filterregistry.Open()
@@ -82,6 +128,13 @@ func TestInstallConflictWarning(t *testing.T) {
 	}
 	if active == nil || active.ID != "gtk-ai/gtkai-date" {
 		t.Fatalf("active filter: %+v", active)
+	}
+	got, err := db.Get("acme/gtkai-date")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got == nil {
+		t.Fatal("previous filter must remain installed but inactive")
 	}
 }
 
@@ -152,6 +205,7 @@ func TestUninstallPromotesPreviousFilter(t *testing.T) {
 		Module:      "github.com/gtk-ai/gtkai-date",
 		Version:     "v0.10.1",
 		CoreVersion: "0.10.0",
+		Replace:     true,
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -88,7 +88,8 @@ Built-in filters (compiled into the binary) use `gtk-ai` as author. Third-party 
 Many filters may declare the same `filters` value. Only one is **active** at a time:
 
 - **Active** = most recently installed among all filters whose `filters` equals that command.
-- On `filter install`, if another filter already targets the same command, print a warning on stderr naming both. The new one becomes active.
+- On `filter install`, if another filter already targets the same command, abort unless `--replace` is passed. With `--replace`, the new filter becomes active; the previous one stays installed but inactive.
+- `filter install-official` (used by `install.sh`) passes `--replace` implicitly for official filters.
 - On `filter uninstall author/gtkai-ls` (full id required):
   - No filters remain for that command → pass through (no rewrite).
   - Other filters remain → active = most recent among survivors.

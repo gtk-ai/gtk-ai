@@ -172,8 +172,9 @@ Many filters may target the same shell command. Only one is **active** at a time
 
 On **install**, when another filter already targets the same command:
 
-- Print a **warning** (stderr) naming the previous active filter and the new one.
-- The newly installed filter becomes active.
+- Abort with an error unless `--replace` is passed (same `id` upgrades always allowed).
+- With `--replace`, the newly installed filter becomes active; the previous filter stays installed but inactive.
+- `install-official` applies `--replace` implicitly.
 
 On **uninstall** (`gtkai filter uninstall author/gtkai-<command>` — full name only):
 
@@ -186,7 +187,7 @@ Listing installed filters and which one is active per command is part of this ph
 ### CLI (sketch)
 
 ```text
-gtkai filter install <path-or-package>   # register filter; warn on command conflict
+gtkai filter install <path-or-package> [--replace]   # abort on command conflict unless --replace
 gtkai filter uninstall author/gtkai-ls   # by full id only
 gtkai filter list                        # all filters; mark active per command
 ```

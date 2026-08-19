@@ -31,15 +31,32 @@ func runFilter(args []string) {
 }
 
 func printFilterUsage() {
-	fmt.Fprintln(os.Stderr, "usage: gtkai filter install <module@version> | install-official <official.json> | uninstall <id> | list")
+	fmt.Fprintln(os.Stderr, "usage: gtkai filter install <module@version> [--replace] | install-official <official.json> | uninstall <id> | list")
 }
 
 func runFilterInstall(args []string) {
-	if len(args) != 1 || args[0] == "" {
-		fmt.Fprintln(os.Stderr, "usage: gtkai filter install <module@version>")
+	var replace bool
+	var ref string
+	for _, arg := range args {
+		switch {
+		case arg == "--replace":
+			replace = true
+		case strings.HasPrefix(arg, "-"):
+			fmt.Fprintf(os.Stderr, "gtkai filter install: unknown flag %q\n", arg)
+			os.Exit(1)
+		default:
+			if ref != "" {
+				fmt.Fprintln(os.Stderr, "usage: gtkai filter install <module@version> [--replace]")
+				os.Exit(1)
+			}
+			ref = arg
+		}
+	}
+	if ref == "" {
+		fmt.Fprintln(os.Stderr, "usage: gtkai filter install <module@version> [--replace]")
 		os.Exit(1)
 	}
-	module, filterVer, err := filterinstall.ParseRef(args[0])
+	module, filterVer, err := filterinstall.ParseRef(ref)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "gtkai filter install: %v\n", err)
 		os.Exit(1)
@@ -49,6 +66,7 @@ func runFilterInstall(args []string) {
 		Version:     filterVer,
 		CoreVersion: version,
 		ReleaseRepo: releaseRepo(),
+		Replace:     replace,
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "gtkai filter install: %v\n", err)
