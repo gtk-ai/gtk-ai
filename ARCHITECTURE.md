@@ -134,7 +134,6 @@ Rules:
 
 ```
 gtkai filter install github.com/gtk-ai/gtkai-ls@v1
-gtkai filter install ./path/to/local/filter
 gtkai filter uninstall gtk-ai/gtkai-ls
 gtkai filter list
 ```

@@ -10,6 +10,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/jmeiracorbal/gtk-ai/internal/filterinstall"
+	"github.com/jmeiracorbal/gtk-ai/internal/testhome"
 )
 
 // buildBinary compila gtkai en dir y devuelve la ruta al ejecutable.
@@ -77,10 +80,14 @@ func initRepo(t *testing.T, dir string) {
 
 // run ejecuta gtkai con los args dados en workDir y devuelve stdout+stderr y el exit code.
 func run(t *testing.T, bin, workDir string, args ...string) (string, int) {
+	return runHome(t, bin, workDir, t.TempDir(), args...)
+}
+
+func runHome(t *testing.T, bin, workDir, home string, args ...string) (string, int) {
 	t.Helper()
 	cmd := exec.Command(bin, args...)
 	cmd.Dir = workDir
-	cmd.Env = append(os.Environ(), "HOME="+t.TempDir())
+	cmd.Env = append(os.Environ(), "HOME="+home)
 	out, err := cmd.CombinedOutput()
 	code := 0
 	if err != nil {
@@ -154,11 +161,31 @@ func TestIntegrationLs(t *testing.T) {
 	}
 }
 
+// installOfficialFilters installs filters from filters/official.json into HOME.
+func installOfficialFilters(t *testing.T) string {
+	t.Helper()
+	home := testhome.Isolated(t)
+	official := filepath.Join(moduleRoot(t), "filters/official.json")
+	if _, err := filterinstall.InstallOfficial(official, "0.10.0", ""); err != nil {
+		t.Fatal(err)
+	}
+	return home
+}
+
+func TestIntegrationDateWithoutFilter(t *testing.T) {
+	bin := buildBinary(t)
+	_, code := run(t, bin, t.TempDir(), "date")
+	if code == 0 {
+		t.Fatal("date without installed filter must exit non-zero")
+	}
+}
+
 func TestIntegrationDate(t *testing.T) {
+	home := installOfficialFilters(t)
 	bin := buildBinary(t)
 	dir := t.TempDir()
 
-	out, code := run(t, bin, dir, "date")
+	out, code := runHome(t, bin, dir, home, "date")
 	if code != 0 {
 		t.Fatalf("exit %d, output:\n%s", code, out)
 	}
@@ -174,11 +201,11 @@ func TestIntegrationDate(t *testing.T) {
 }
 
 func TestIntegrationDateWithFormat(t *testing.T) {
+	home := installOfficialFilters(t)
 	bin := buildBinary(t)
 	dir := t.TempDir()
 
-	// con formato explícito el filtro no debe modificar el comportamiento
-	out, code := run(t, bin, dir, "date", "+%s")
+	out, code := runHome(t, bin, dir, home, "date", "+%s")
 	if code != 0 {
 		t.Fatalf("exit %d, output:\n%s", code, out)
 	}
@@ -214,12 +241,13 @@ func TestIntegrationVersion(t *testing.T) {
 // para el comando date: el binario compilado lee un payload JSON y produce
 // el JSON de reescritura correcto.
 func TestIntegrationHookPreDate(t *testing.T) {
+	home := installOfficialFilters(t)
 	bin := buildBinary(t)
 	payload := `{"tool_name":"Bash","tool_input":{"command":"date"}}`
 
 	cmd := exec.Command(bin, "hook-pre", "--agent=claudecode")
 	cmd.Stdin = strings.NewReader(payload)
-	cmd.Env = append(os.Environ(), "HOME="+t.TempDir())
+	cmd.Env = append(os.Environ(), "HOME="+home)
 	out, err := cmd.Output()
 	if err != nil {
 		t.Fatalf("hook-pre: %v", err)
@@ -231,6 +259,19 @@ func TestIntegrationHookPreDate(t *testing.T) {
 
 // TestIntegrationHookPreDateAlreadyProxied verifica que el hook no reescribe
 // un comando que ya fue proxiado.
+func TestIntegrationHookPreDateWithoutFilter(t *testing.T) {
+	bin := buildBinary(t)
+	payload := `{"tool_name":"Bash","tool_input":{"command":"date"}}`
+
+	cmd := exec.Command(bin, "hook-pre", "--agent=claudecode")
+	cmd.Stdin = strings.NewReader(payload)
+	cmd.Env = append(os.Environ(), "HOME="+t.TempDir())
+	out, _ := cmd.Output()
+	if strings.Contains(string(out), "gtkai date") {
+		t.Fatalf("hook must not rewrite date without installed filter, got: %s", out)
+	}
+}
+
 func TestIntegrationHookPreDateAlreadyProxied(t *testing.T) {
 	bin := buildBinary(t)
 	payload := `{"tool_name":"Bash","tool_input":{"command":"gtkai date"}}`

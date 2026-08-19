@@ -1,6 +1,9 @@
 package filtermanifest_test
 
 import (
+	"encoding/json"
+	"fmt"
+	"os/exec"
 	"strings"
 	"testing"
 
@@ -83,7 +86,11 @@ func TestValidateGtkaiCoreVersionUnknownConstraint(t *testing.T) {
 }
 
 func TestParseGtkaiDateManifest(t *testing.T) {
-	m, err := filtermanifest.ParseFile("../../filters/gtk-ai/gtkai-date/gtkai.json")
+	dir, err := downloadModuleDir("github.com/gtk-ai/gtkai-date@v0.10.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := filtermanifest.ParseFile(dir + "/gtkai.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,4 +103,21 @@ func TestParseGtkaiDateManifest(t *testing.T) {
 	if err := m.ValidateGtkaiCoreVersion("0.10.0"); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func downloadModuleDir(ref string) (string, error) {
+	out, err := exec.Command("go", "mod", "download", "-json", ref).Output()
+	if err != nil {
+		return "", err
+	}
+	var info struct {
+		Dir string `json:"Dir"`
+	}
+	if err := json.Unmarshal(out, &info); err != nil {
+		return "", err
+	}
+	if info.Dir == "" {
+		return "", fmt.Errorf("go mod download returned empty dir for %s", ref)
+	}
+	return info.Dir, nil
 }

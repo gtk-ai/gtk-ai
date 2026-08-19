@@ -517,6 +517,11 @@ case "$AGENT" in
 esac
 
 install_official_filters() {
+  if [ "${GTKAI_SKIP_FILTERS:-}" = "1" ]; then
+    warn "Skipping official filter install (GTKAI_SKIP_FILTERS=1)"
+    return
+  fi
+
   header "Installing official filters"
 
   OFFICIAL_JSON=""
@@ -529,17 +534,7 @@ install_official_filters() {
     return
   fi
 
-  LOCAL_ROOT=""
-  if [ -d "$(dirname "$0")/filters/gtk-ai" ]; then
-    LOCAL_ROOT="$(cd "$(dirname "$0")/filters/gtk-ai" && pwd)"
-  elif [ -n "$TMP_DIR" ] && [ -d "$TMP_DIR/gtk-ai/filters/gtk-ai" ]; then
-    LOCAL_ROOT="$TMP_DIR/gtk-ai/filters/gtk-ai"
-  fi
-
   INSTALL_OFFICIAL_ARGS="--core-version=$INSTALLED_VERSION"
-  if [ -n "$LOCAL_ROOT" ]; then
-    INSTALL_OFFICIAL_ARGS="$INSTALL_OFFICIAL_ARGS --local-root=$LOCAL_ROOT"
-  fi
 
   if "$GTKAI_BIN" filter install-official "$OFFICIAL_JSON" $INSTALL_OFFICIAL_ARGS; then
     success "Official filters installed"

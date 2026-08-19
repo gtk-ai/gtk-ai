@@ -58,6 +58,7 @@ func baseEnv(t *testing.T, home, installDir string) []string {
 		"HOME=" + home,
 		"GTKAI_INSTALL_DIR=" + installDir,
 		"GTKAI_SKIP_BINARY=1",
+		"GTKAI_SKIP_FILTERS=1",
 		"GTKAI_SCRIPTS_DIR=" + scriptsDir,
 		"PATH=" + installDir + ":" + os.Getenv("PATH"),
 		"SHELL=/bin/sh",
