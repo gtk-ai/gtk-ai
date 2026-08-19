@@ -33,8 +33,8 @@ func TestInstallGtkaiDateRemote(t *testing.T) {
 
 	rec, err := filterinstall.Install(filterinstall.Options{
 		Module:      "github.com/gtk-ai/date",
-		Version:     "v0.11.0",
-		CoreVersion: "0.10.0",
+		Version:     "v0.12.0",
+		CoreVersion: "0.11.0",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -71,7 +71,7 @@ func TestInstallOfficial(t *testing.T) {
 
 	root := moduleRoot(t)
 	official := filepath.Join(root, "filters/official.json")
-	installed, err := filterinstall.InstallOfficial(official, "0.11.0-beta.1", "")
+	installed, err := filterinstall.InstallOfficial(official, "0.11.0", "")
 	if err != nil {
 		t.Fatal(err)
 	}
