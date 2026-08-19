@@ -61,7 +61,7 @@ The core is responsible for:
 
 One repository per intercepted shell argv0. Each filter:
 
-- Declares an `id` (`author/<cmd>`) and a `filters` field (the argv0 it intercepts).
+- Declares an `id` (`author/<cmd>`) and a `command` field (the argv0 it intercepts).
 - Implements `Rewrite` and `FilterOutput` (and optionally `ExtraEnv`).
 - Does not register agent hooks. Does not know which runtime called it.
 - Cannot bypass `never_worse`, ANSI stripping, or `gain` recording; the core applies those unconditionally.
@@ -85,9 +85,9 @@ Built-in filters (compiled into the binary) use `gtk-ai` as author. Third-party 
 
 ### Active filter resolution
 
-Many filters may declare the same `filters` value. Only one is **active** at a time:
+Many filters may declare the same `command` value. Only one is **active** at a time:
 
-- **Active** = most recently installed among all filters whose `filters` equals that command.
+- **Active** = most recently installed among all filters whose `command` equals that argv0.
 - On `filter install`, if another filter already targets the same command, abort unless `--replace` is passed. With `--replace`, the new filter becomes active; the previous one stays installed but inactive.
 - `filter install-official` (used by `install.sh`) passes `--replace` implicitly for official filters.
 - On `filter uninstall gtk-ai/ls` (full id required):
@@ -221,17 +221,17 @@ Every filter module ships a `gtkai.json` manifest at the repository root:
 ```json
 {
   "id": "author/<cmd>",
-  "filters": ["<argv0>"],
+  "command": "<argv0>",
   "platforms": ["linux/amd64", "darwin/arm64"],
   "contract": "subprocess/v1",
   "gtkai-core-version": {
-    "version": "0.10.0",
+    "version": "0.11.0",
     "constraint": "min"
   }
 }
 ```
 
-Required fields: `id`, `filters`, `platforms`, `contract`, `gtkai-core-version`.
+Required fields: `id`, `command`, `platforms`, `contract`, `gtkai-core-version`.
 
 - `id` must match `^[a-z0-9_-]+/[a-z0-9_-]+$`.
 - `contract` must be `subprocess/v1`.
@@ -240,7 +240,7 @@ Required fields: `id`, `filters`, `platforms`, `contract`, `gtkai-core-version`.
   - `"min"` — running `gtkai` must be `>= version`.
   - `"exact"` — running `gtkai` must match `version` exactly.
 
-**Module version is not in the manifest.** It is resolved from the install ref — the git tag of the filter repository. Example: `gtkai filter install github.com/gtk-ai/date@v0.11.0` installs tag `v0.11.0`; the core records that version in the registry at install time.
+**Module version is not in the manifest.** It is resolved from the install ref — the git tag of the filter repository. Example: `gtkai filter install github.com/gtk-ai/date@v0.12.0` installs tag `v0.12.0`; the core records that version in the registry at install time.
 
 On install, the core validates `gtkai-core-version` against the running binary:
 

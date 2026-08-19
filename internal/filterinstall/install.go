@@ -75,7 +75,7 @@ func Install(opts Options) (*filterregistry.Record, error) {
 		return nil, err
 	}
 	defer db.Close()
-	if err := checkReplaceConflict(db, manifest.ID, manifest.Filters[0], opts.Replace); err != nil {
+	if err := checkReplaceConflict(db, manifest.ID, manifest.Command, opts.Replace); err != nil {
 		return nil, err
 	}
 
@@ -101,7 +101,7 @@ func Install(opts Options) (*filterregistry.Record, error) {
 		ID:           manifest.ID,
 		Module:       opts.Module,
 		Version:      opts.Version,
-		Argv0:        manifest.Filters[0],
+		Argv0:        manifest.Command,
 		Contract:     manifest.Contract,
 		BinaryPath:   destBin,
 		ManifestPath: destManifest,
