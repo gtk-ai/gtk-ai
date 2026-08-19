@@ -21,11 +21,10 @@ import (
 
 // Options configures filter installation.
 type Options struct {
-	Module       string
-	Version      string
-	CoreVersion  string
-	ReleaseRepo  string
-	LocalDir     string // monorepo filter path when installing from source tree
+	Module      string
+	Version     string
+	CoreVersion string
+	ReleaseRepo string
 }
 
 // ParseRef splits module@version. Both parts are required.
@@ -111,9 +110,6 @@ func Install(opts Options) (*filterregistry.Record, error) {
 }
 
 func resolveSource(opts Options, platform string) (srcDir, binary string, err error) {
-	if opts.LocalDir != "" {
-		return buildLocal(opts.LocalDir)
-	}
 	if prebuilt, ok := tryPrebuilt(opts.ReleaseRepo, opts.Version, platform); ok {
 		srcDir, err = fetchGoModule(opts.Module, opts.Version)
 		if err != nil {
@@ -130,21 +126,6 @@ func resolveSource(opts Options, platform string) (srcDir, binary string, err er
 		return "", "", err
 	}
 	return srcDir, binary, nil
-}
-
-func buildLocal(dir string) (srcDir, binary string, err error) {
-	if dir == "" {
-		return "", "", fmt.Errorf("local dir is empty")
-	}
-	manifestPath := filepath.Join(dir, filtermanifest.ManifestFileName)
-	if _, err := os.Stat(manifestPath); err != nil {
-		return "", "", fmt.Errorf("local filter missing gtkai.json: %w", err)
-	}
-	tmpBin := filepath.Join(os.TempDir(), fmt.Sprintf("gtkai-filter-build-%d", time.Now().UnixNano()))
-	if err := goBuildDir("", filepath.Join(dir, "cmd"), tmpBin); err != nil {
-		return "", "", err
-	}
-	return dir, tmpBin, nil
 }
 
 func tryPrebuilt(releaseRepo, version, platform string) (path string, ok bool) {
@@ -176,9 +157,16 @@ func splitPlatform(platform string) (osName, arch string) {
 	return parts[0], parts[1]
 }
 
+func execGo(dir string, args ...string) ([]byte, error) {
+	cmd := exec.Command("go", args...)
+	cmd.Dir = dir
+	cmd.Env = os.Environ()
+	return cmd.CombinedOutput()
+}
+
 func fetchGoModule(module, version string) (string, error) {
 	modVersion := module + "@" + version
-	out, err := exec.Command("go", "mod", "download", "-json", modVersion).Output()
+	out, err := execGo("", "mod", "download", "-json", modVersion)
 	if err != nil {
 		return "", fmt.Errorf("go mod download %s: %w", modVersion, err)
 	}
@@ -203,12 +191,14 @@ func buildModule(module, version string) (string, error) {
 
 	init := exec.Command("go", "mod", "init", "gtkai-filter-build")
 	init.Dir = tmpDir
+	init.Env = os.Environ()
 	if out, err := init.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("go mod init: %w\n%s", err, out)
 	}
 	modVersion := module + "@" + version
 	get := exec.Command("go", "get", modVersion)
 	get.Dir = tmpDir
+	get.Env = os.Environ()
 	if out, err := get.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("go get %s: %w\n%s", modVersion, err, out)
 	}
@@ -223,15 +213,12 @@ func buildModule(module, version string) (string, error) {
 func goBuildDir(dir, pkg, out string) error {
 	cmd := exec.Command("go", "build", "-o", out, pkg)
 	cmd.Dir = dir
+	cmd.Env = os.Environ()
 	outBytes, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("go build %s: %w\n%s", pkg, err, outBytes)
 	}
 	return nil
-}
-
-func goBuild(pkg, out string) error {
-	return goBuildDir("", pkg, out)
 }
 
 func downloadFile(url, dest string) error {
@@ -310,7 +297,7 @@ func LoadOfficial(path string) (OfficialFilters, error) {
 }
 
 // InstallOfficial installs every filter listed in official.json.
-func InstallOfficial(officialPath, coreVersion, releaseRepo, localFiltersRoot string) ([]filterregistry.Record, error) {
+func InstallOfficial(officialPath, coreVersion, releaseRepo string) ([]filterregistry.Record, error) {
 	official, err := LoadOfficial(officialPath)
 	if err != nil {
 		return nil, err
@@ -322,13 +309,6 @@ func InstallOfficial(officialPath, coreVersion, releaseRepo, localFiltersRoot st
 			Version:     f.Version,
 			CoreVersion: coreVersion,
 			ReleaseRepo: releaseRepo,
-		}
-		if localFiltersRoot != "" {
-			name := strings.TrimPrefix(f.Module, "github.com/gtk-ai/")
-			candidate := filepath.Join(localFiltersRoot, name)
-			if _, err := os.Stat(filepath.Join(candidate, filtermanifest.ManifestFileName)); err == nil {
-				opts.LocalDir = candidate
-			}
 		}
 		rec, err := Install(opts)
 		if err != nil {

@@ -53,7 +53,6 @@ func runFilterInstall(args []string) {
 func runFilterInstallOfficial(args []string) {
 	var officialPath string
 	var coreVersion string
-	var localRoot string
 	for i := 0; i < len(args); i++ {
 		switch {
 		case args[i] == "--core-version":
@@ -65,15 +64,6 @@ func runFilterInstallOfficial(args []string) {
 			i++
 		case strings.HasPrefix(args[i], "--core-version="):
 			coreVersion = strings.TrimPrefix(args[i], "--core-version=")
-		case args[i] == "--local-root":
-			if i+1 >= len(args) {
-				fmt.Fprintln(os.Stderr, "gtkai filter install-official: --local-root requires a value")
-				os.Exit(1)
-			}
-			localRoot = args[i+1]
-			i++
-		case strings.HasPrefix(args[i], "--local-root="):
-			localRoot = strings.TrimPrefix(args[i], "--local-root=")
 		case strings.HasPrefix(args[i], "-"):
 			fmt.Fprintf(os.Stderr, "gtkai filter install-official: unknown flag %q\n", args[i])
 			os.Exit(1)
@@ -93,7 +83,7 @@ func runFilterInstallOfficial(args []string) {
 		fmt.Fprintln(os.Stderr, "gtkai filter install-official: --core-version is required")
 		os.Exit(1)
 	}
-	installed, err := filterinstall.InstallOfficial(officialPath, coreVersion, releaseRepo(), localRoot)
+	installed, err := filterinstall.InstallOfficial(officialPath, coreVersion, releaseRepo())
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "gtkai filter install-official: %v\n", err)
 		os.Exit(1)

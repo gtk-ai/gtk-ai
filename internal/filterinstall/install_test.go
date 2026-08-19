@@ -7,6 +7,7 @@ import (
 
 	"github.com/jmeiracorbal/gtk-ai/internal/filterinstall"
 	"github.com/jmeiracorbal/gtk-ai/internal/filterregistry"
+	"github.com/jmeiracorbal/gtk-ai/internal/testhome"
 )
 
 func moduleRoot(t *testing.T) string {
@@ -27,16 +28,13 @@ func moduleRoot(t *testing.T) string {
 	}
 }
 
-func TestInstallLocalGtkaiDate(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
+func TestInstallGtkaiDateRemote(t *testing.T) {
+	testhome.Isolated(t)
 
-	localDir := filepath.Join(moduleRoot(t), "filters/gtk-ai/gtkai-date")
 	rec, err := filterinstall.Install(filterinstall.Options{
 		Module:      "github.com/gtk-ai/gtkai-date",
 		Version:     "v0.10.1",
 		CoreVersion: "0.10.0",
-		LocalDir:    localDir,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -68,14 +66,12 @@ func TestInstallLocalGtkaiDate(t *testing.T) {
 	}
 }
 
-func TestInstallOfficialLocal(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
+func TestInstallOfficial(t *testing.T) {
+	testhome.Isolated(t)
 
 	root := moduleRoot(t)
 	official := filepath.Join(root, "filters/official.json")
-	localRoot := filepath.Join(root, "filters/gtk-ai")
-	installed, err := filterinstall.InstallOfficial(official, "0.10.0", "", localRoot)
+	installed, err := filterinstall.InstallOfficial(official, "0.10.0", "")
 	if err != nil {
 		t.Fatal(err)
 	}

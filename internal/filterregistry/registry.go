@@ -102,7 +102,18 @@ func (d *DB) Active(argv0 string) (*Record, error) {
 	return &rec, nil
 }
 
-// List returns all installed filters ordered by argv0 then recency.
+// HasActive reports whether an external filter is installed for argv0.
+func HasActive(argv0 string) bool {
+	db, err := Open()
+	if err != nil {
+		return false
+	}
+	defer db.Close()
+	rec, err := db.Active(argv0)
+	return err == nil && rec != nil
+}
+
+// List returns all installed filters ordered by argv0 and install time.
 func (d *DB) List() ([]Record, error) {
 	rows, err := d.db.Query(`
 		SELECT id, module, version, argv0, contract, binary_path, manifest_path, installed_at

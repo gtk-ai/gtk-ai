@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/jmeiracorbal/gtk-ai/internal/filterregistry"
 	"github.com/jmeiracorbal/gtk-ai/internal/hook"
 	"github.com/jmeiracorbal/gtk-ai/internal/jsonmerge"
 	"github.com/jmeiracorbal/gtk-ai/internal/proxy"
@@ -14,7 +15,6 @@ import (
 	"github.com/jmeiracorbal/gtk-ai/modules/gain"
 	"github.com/jmeiracorbal/gtk-ai/modules/mcpscan"
 
-	_ "github.com/jmeiracorbal/gtk-ai/filters/gtk-ai/gtkai-date"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/cargo"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/docker"
 	_ "github.com/jmeiracorbal/gtk-ai/modules/find"
@@ -133,7 +133,7 @@ func main() {
 		runFilter(os.Args[2:])
 
 	default:
-		if registry.Get(os.Args[1]) == nil {
+		if registry.Get(os.Args[1]) == nil && !filterregistry.HasActive(os.Args[1]) {
 			fmt.Fprintf(os.Stderr, "gtkai: unknown command %q\n\n", os.Args[1])
 			usage()
 			os.Exit(1)

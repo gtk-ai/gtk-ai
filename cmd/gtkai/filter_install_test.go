@@ -9,6 +9,7 @@ import (
 
 	"github.com/jmeiracorbal/gtk-ai/internal/filterinstall"
 	"github.com/jmeiracorbal/gtk-ai/internal/proxy"
+	"github.com/jmeiracorbal/gtk-ai/internal/testhome"
 )
 
 func captureProxyStdout(t *testing.T, fn func() int) string {
@@ -34,13 +35,11 @@ func captureProxyStdout(t *testing.T, fn func() int) string {
 }
 
 func TestFilterInstallOfficialAndProxyDate(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
+	testhome.Isolated(t)
 
 	root := moduleRoot(t)
 	official := filepath.Join(root, "filters/official.json")
-	localRoot := filepath.Join(root, "filters/gtk-ai")
-	if _, err := filterinstall.InstallOfficial(official, "0.10.0", "", localRoot); err != nil {
+	if _, err := filterinstall.InstallOfficial(official, "0.10.0", ""); err != nil {
 		t.Fatal(err)
 	}
 
