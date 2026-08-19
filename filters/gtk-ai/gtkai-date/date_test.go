@@ -78,10 +78,10 @@ func TestID(t *testing.T) {
 	}
 }
 
-// --- filter.json manifest ---
+// --- gtkai.json manifest ---
 
 func TestFilterManifest(t *testing.T) {
-	m, err := filtermanifest.ParseFile("filter.json")
+	m, err := filtermanifest.ParseFile("gtkai.json")
 	if err != nil {
 		t.Fatal(err)
 	}
