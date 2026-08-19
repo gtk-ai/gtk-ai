@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jmeiracorbal/gtk-ai/internal/filterregistry"
+	"github.com/jmeiracorbal/gtk-ai/internal/filtersubprocess"
 	"github.com/jmeiracorbal/gtk-ai/internal/registry"
 	"github.com/jmeiracorbal/gtk-ai/internal/text"
 	"github.com/jmeiracorbal/gtk-ai/modules/gain"
@@ -16,7 +18,7 @@ import (
 
 // Run executes name with args, filters stdout, records gain, and returns the child exit code.
 func Run(name string, args []string) int {
-	mod := registry.Get(name)
+	mod := resolveModule(name)
 	if mod == nil {
 		fmt.Fprintf(os.Stderr, "gtkai: unknown command %q\n", name)
 		return 1
@@ -68,6 +70,19 @@ func Run(name string, args []string) int {
 		return 1
 	}
 	return execCode
+}
+
+func resolveModule(name string) registry.Module {
+	db, err := filterregistry.Open()
+	if err != nil {
+		return registry.Get(name)
+	}
+	defer db.Close()
+	rec, err := db.Active(name)
+	if err != nil || rec == nil {
+		return registry.Get(name)
+	}
+	return filtersubprocess.NewModule(name, rec.BinaryPath)
 }
 
 func extraEnv(mod registry.Module, args []string) []string {

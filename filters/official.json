@@ -1,0 +1,8 @@
+{
+  "filters": [
+    {
+      "module": "github.com/gtk-ai/gtkai-date",
+      "version": "v0.10.1"
+    }
+  ]
+}

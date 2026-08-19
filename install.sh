@@ -516,7 +516,40 @@ case "$AGENT" in
     ;;
 esac
 
+install_official_filters() {
+  header "Installing official filters"
+
+  OFFICIAL_JSON=""
+  if [ -f "$(dirname "$0")/filters/official.json" ]; then
+    OFFICIAL_JSON="$(cd "$(dirname "$0")" && pwd)/filters/official.json"
+  elif [ -n "$TMP_DIR" ] && [ -f "$TMP_DIR/gtk-ai/filters/official.json" ]; then
+    OFFICIAL_JSON="$TMP_DIR/gtk-ai/filters/official.json"
+  else
+    warn "official filters manifest not found — skipping filter install"
+    return
+  fi
+
+  LOCAL_ROOT=""
+  if [ -d "$(dirname "$0")/filters/gtk-ai" ]; then
+    LOCAL_ROOT="$(cd "$(dirname "$0")/filters/gtk-ai" && pwd)"
+  elif [ -n "$TMP_DIR" ] && [ -d "$TMP_DIR/gtk-ai/filters/gtk-ai" ]; then
+    LOCAL_ROOT="$TMP_DIR/gtk-ai/filters/gtk-ai"
+  fi
+
+  INSTALL_OFFICIAL_ARGS="--core-version=$INSTALLED_VERSION"
+  if [ -n "$LOCAL_ROOT" ]; then
+    INSTALL_OFFICIAL_ARGS="$INSTALL_OFFICIAL_ARGS --local-root=$LOCAL_ROOT"
+  fi
+
+  if "$GTKAI_BIN" filter install-official "$OFFICIAL_JSON" $INSTALL_OFFICIAL_ARGS; then
+    success "Official filters installed"
+  else
+    error "Official filter installation failed"
+  fi
+}
+
 warn_rtk
+install_official_filters
 rm -rf "$TMP_DIR"
 
 header "Done"

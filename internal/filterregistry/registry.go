@@ -1,0 +1,126 @@
+// Package filterregistry persists installed external filters in ~/.gtk-ai/filters.db.
+package filterregistry
+
+import (
+	"database/sql"
+	"fmt"
+	"path/filepath"
+	"time"
+
+	"github.com/jmeiracorbal/gtk-ai/internal/storage"
+	_ "modernc.org/sqlite"
+)
+
+const schema = `
+CREATE TABLE IF NOT EXISTS filters (
+	id           TEXT PRIMARY KEY,
+	module       TEXT NOT NULL,
+	version      TEXT NOT NULL,
+	argv0        TEXT NOT NULL,
+	contract     TEXT NOT NULL,
+	binary_path  TEXT NOT NULL,
+	manifest_path TEXT NOT NULL,
+	installed_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_filters_argv0 ON filters(argv0, installed_at);
+`
+
+// Record is one installed filter.
+type Record struct {
+	ID           string
+	Module       string
+	Version      string
+	Argv0        string
+	Contract     string
+	BinaryPath   string
+	ManifestPath string
+	InstalledAt  time.Time
+}
+
+// DB manages the filters database.
+type DB struct {
+	db *sql.DB
+}
+
+// Open opens or creates ~/.gtk-ai/filters.db.
+func Open() (*DB, error) {
+	dir, err := storage.Dir()
+	if err != nil {
+		return nil, err
+	}
+	db, err := sql.Open("sqlite", filepath.Join(dir, "filters.db"))
+	if err != nil {
+		return nil, err
+	}
+	if _, err := db.Exec(schema); err != nil {
+		db.Close()
+		return nil, err
+	}
+	return &DB{db: db}, nil
+}
+
+func (d *DB) Close() { d.db.Close() }
+
+// Install records a filter, replacing any previous install with the same id.
+func (d *DB) Install(rec Record) error {
+	if rec.ID == "" || rec.Module == "" || rec.Version == "" || rec.Argv0 == "" {
+		return fmt.Errorf("incomplete filter record")
+	}
+	if rec.BinaryPath == "" || rec.ManifestPath == "" {
+		return fmt.Errorf("incomplete filter record")
+	}
+	_, err := d.db.Exec(`
+		INSERT INTO filters (id, module, version, argv0, contract, binary_path, manifest_path, installed_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(id) DO UPDATE SET
+			module=excluded.module,
+			version=excluded.version,
+			argv0=excluded.argv0,
+			contract=excluded.contract,
+			binary_path=excluded.binary_path,
+			manifest_path=excluded.manifest_path,
+			installed_at=excluded.installed_at
+	`, rec.ID, rec.Module, rec.Version, rec.Argv0, rec.Contract, rec.BinaryPath, rec.ManifestPath, rec.InstalledAt.Unix())
+	return err
+}
+
+// Active returns the most recently installed filter for argv0.
+func (d *DB) Active(argv0 string) (*Record, error) {
+	row := d.db.QueryRow(`
+		SELECT id, module, version, argv0, contract, binary_path, manifest_path, installed_at
+		FROM filters WHERE argv0 = ? ORDER BY installed_at DESC LIMIT 1
+	`, argv0)
+	var rec Record
+	var ts int64
+	if err := row.Scan(&rec.ID, &rec.Module, &rec.Version, &rec.Argv0, &rec.Contract, &rec.BinaryPath, &rec.ManifestPath, &ts); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	rec.InstalledAt = time.Unix(ts, 0)
+	return &rec, nil
+}
+
+// List returns all installed filters ordered by argv0 then recency.
+func (d *DB) List() ([]Record, error) {
+	rows, err := d.db.Query(`
+		SELECT id, module, version, argv0, contract, binary_path, manifest_path, installed_at
+		FROM filters ORDER BY argv0, installed_at DESC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Record
+	for rows.Next() {
+		var rec Record
+		var ts int64
+		if err := rows.Scan(&rec.ID, &rec.Module, &rec.Version, &rec.Argv0, &rec.Contract, &rec.BinaryPath, &rec.ManifestPath, &ts); err != nil {
+			return nil, err
+		}
+		rec.InstalledAt = time.Unix(ts, 0)
+		out = append(out, rec)
+	}
+	return out, rows.Err()
+}

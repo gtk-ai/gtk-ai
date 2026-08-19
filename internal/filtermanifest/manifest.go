@@ -5,10 +5,45 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"golang.org/x/mod/semver"
 )
+
+var idRegex = regexp.MustCompile(`^[a-z0-9_-]+/gtkai-[a-z0-9_-]+$`)
+
+// Validate checks manifest fields, platform, and core version compatibility.
+func (m *Manifest) Validate(runningGtkai, platform string) error {
+	if !idRegex.MatchString(m.ID) {
+		return fmt.Errorf("id %q does not match naming rule", m.ID)
+	}
+	if len(m.Filters) == 0 {
+		return fmt.Errorf("filters must not be empty")
+	}
+	if m.Contract != "subprocess/v1" {
+		return fmt.Errorf("contract must be subprocess/v1, got %q", m.Contract)
+	}
+	if !semver.IsValid(normalizeSemver(m.GtkaiCoreVersion.Version)) {
+		return fmt.Errorf("gtkai-core-version.version %q is not valid semver", m.GtkaiCoreVersion.Version)
+	}
+	if m.GtkaiCoreVersion.Constraint != "min" && m.GtkaiCoreVersion.Constraint != "exact" {
+		return fmt.Errorf("unknown constraint %q", m.GtkaiCoreVersion.Constraint)
+	}
+	if !platformListed(m.Platforms, platform) {
+		return fmt.Errorf("platform %q not in manifest platforms", platform)
+	}
+	return m.ValidateGtkaiCoreVersion(runningGtkai)
+}
+
+func platformListed(platforms []string, platform string) bool {
+	for _, p := range platforms {
+		if p == platform {
+			return true
+		}
+	}
+	return false
+}
 
 // ManifestFileName is the required manifest filename at the root of a filter repository.
 const ManifestFileName = "gtkai.json"
