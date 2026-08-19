@@ -19,7 +19,7 @@ gtk-ai/gtk-ai — core binary (gtkai)
   hook-pre · hook-post · proxy · registry · rewrite · never_worse · gain
         │  filter contract: id + filters + Rewrite + FilterOutput
         ▼
-gtk-ai/gtkai-<command>  (one repository per intercepted shell argv0)
+gtk-ai/<cmd>  (one repository per intercepted shell argv0)
 ```
 
 ### Layer 1 — runtime integration (hook-pre / hook-post)
@@ -57,11 +57,11 @@ The core is responsible for:
 - Applying ANSI stripping, `never_worse`, and `gain` recording (filters cannot bypass these).
 - Serialising the response in the format the runtime expects.
 
-### Layer 3 — filters (`gtk-ai/gtkai-<command>`)
+### Layer 3 — filters (`gtk-ai/<cmd>`)
 
 One repository per intercepted shell argv0. Each filter:
 
-- Declares an `id` (`author/gtkai-<command>`) and a `filters` field (the argv0 it intercepts).
+- Declares an `id` (`author/<cmd>`) and a `filters` field (the argv0 it intercepts).
 - Implements `Rewrite` and `FilterOutput` (and optionally `ExtraEnv`).
 - Does not register agent hooks. Does not know which runtime called it.
 - Cannot bypass `never_worse`, ANSI stripping, or `gain` recording; the core applies those unconditionally.
@@ -73,13 +73,13 @@ One repository per intercepted shell argv0. Each filter:
 ### Naming rule
 
 ```
-author/gtkai-<command>
+author/<cmd>
 ```
 
 - `author` — GitHub organisation or username owning the filter implementation.
-- `gtkai-<command>` — fixed suffix; `<command>` is the shell argv0 (basename) intercepted.
+- `<cmd>` — the shell argv0 (basename) intercepted; for official filters, matches the repository name under `gtk-ai/`.
 
-Examples: `gtk-ai/gtkai-ls`, `gtk-ai/gtkai-git`, `acme/gtkai-ls`.
+Examples: `gtk-ai/date`, `gtk-ai/ls`, `acme/ls`.
 
 Built-in filters (compiled into the binary) use `gtk-ai` as author. Third-party filters use their own prefix and the same naming rule. The namespace never appears in Bash commands.
 
@@ -90,7 +90,7 @@ Many filters may declare the same `filters` value. Only one is **active** at a t
 - **Active** = most recently installed among all filters whose `filters` equals that command.
 - On `filter install`, if another filter already targets the same command, abort unless `--replace` is passed. With `--replace`, the new filter becomes active; the previous one stays installed but inactive.
 - `filter install-official` (used by `install.sh`) passes `--replace` implicitly for official filters.
-- On `filter uninstall author/gtkai-ls` (full id required):
+- On `filter uninstall gtk-ai/ls` (full id required):
   - No filters remain for that command → pass through (no rewrite).
   - Other filters remain → active = most recent among survivors.
 
@@ -119,23 +119,23 @@ type EnvInjector interface {
 ### Repository layout
 
 ```
-gtk-ai/gtk-ai        — core binary, runtime integrations
-gtk-ai/gtkai-ls      — filter for ls
-gtk-ai/gtkai-git     — filter for git
-gtk-ai/gtkai-go      — filter for go test/build/vet
-…                    — one repo per intercepted argv0
+gtk-ai/gtk-ai   — core binary, runtime integrations
+gtk-ai/date     — filter for date (reference template)
+gtk-ai/ls       — filter for ls
+gtk-ai/git      — filter for git
+…               — one repo per intercepted argv0
 ```
 
 Rules:
 - One repository per shell command intercepted. No monorepo for filters.
-- Built-in filters (compiled in) and packaged filters (separate repos) share the same id scheme. A packaged `gtk-ai/gtkai-ls` can replace the built-in one.
-- Third-party authors use their own prefix: `acme/gtkai-ls`.
+- Built-in filters (compiled in) and packaged filters (separate repos) share the same id scheme. A packaged `gtk-ai/ls` can replace the built-in one.
+- Third-party authors use their own prefix: `acme/ls`.
 
 ### install transport (sketch)
 
 ```
-gtkai filter install github.com/gtk-ai/gtkai-ls@v1
-gtkai filter uninstall gtk-ai/gtkai-ls
+gtkai filter install github.com/gtk-ai/ls@v1
+gtkai filter uninstall gtk-ai/ls
 gtkai filter list
 ```
 
@@ -177,7 +177,15 @@ The exact transport (Go plugin, subprocess + manifest, static binary) is an impl
 
 ### Transport: subprocess/v1
 
-Each external filter is a standalone binary. The core communicates with it via stdin/stdout using a line-delimited JSON protocol. No shared memory, no dynamic linking.
+**In one sentence:** `subprocess/v1` means gtk-ai runs your filter as an external program and talks to it via JSON on stdin/stdout, according to the v1 specification.
+
+Each external filter is a standalone binary. The core communicates with it via stdin/stdout using a JSON protocol. No shared memory, no dynamic linking.
+
+#### Why this model
+
+- **Language-agnostic** — the filter can be written in any language (Go, Rust, Python, …) as long as it produces a binary that speaks the JSON protocol on stdin/stdout.
+- **Isolation** — if the filter crashes or misbehaves, the core keeps running.
+- **Simple installation** — download or compile one binary per filter; no plugins or shared libraries.
 
 Go plugin (`.so`) is explicitly out of scope and will not be implemented.
 
@@ -212,7 +220,7 @@ Every filter module ships a `gtkai.json` manifest at the repository root:
 
 ```json
 {
-  "id": "author/gtkai-<command>",
+  "id": "author/<cmd>",
   "filters": ["<argv0>"],
   "platforms": ["linux/amd64", "darwin/arm64"],
   "contract": "subprocess/v1",
@@ -225,14 +233,14 @@ Every filter module ships a `gtkai.json` manifest at the repository root:
 
 Required fields: `id`, `filters`, `platforms`, `contract`, `gtkai-core-version`.
 
-- `id` must match `^[a-z0-9_-]+/gtkai-[a-z0-9_-]+$`.
+- `id` must match `^[a-z0-9_-]+/[a-z0-9_-]+$`.
 - `contract` must be `subprocess/v1`.
 - `gtkai-core-version.version` must be valid semver.
 - `gtkai-core-version.constraint` must be `"min"` or `"exact"`:
   - `"min"` — running `gtkai` must be `>= version`.
   - `"exact"` — running `gtkai` must match `version` exactly.
 
-**Module version is not in the manifest.** It is resolved from the install ref — the git tag of the filter repository. Example: `gtkai filter install gtk-ai/gtkai-date@v0.10.0` installs tag `v0.10.0`; the core records that version in the registry at install time.
+**Module version is not in the manifest.** It is resolved from the install ref — the git tag of the filter repository. Example: `gtkai filter install github.com/gtk-ai/date@v0.11.0` installs tag `v0.11.0`; the core records that version in the registry at install time.
 
 On install, the core validates `gtkai-core-version` against the running binary:
 
@@ -274,8 +282,8 @@ Installed filters are recorded in `~/.gtk-ai/filters.db` (SQLite). The path is r
 ### Binary layout
 
 ```
-~/.gtk-ai/filters/gtk-ai/gtkai-date/
-    gtkai-date
+~/.gtk-ai/filters/gtk-ai/date/
+    date
     gtkai.json
 ```
 
@@ -283,9 +291,9 @@ Binaries are downloaded from the GitHub Releases page of the filter repository a
 
 ### Official filters and install.sh
 
-`install.sh` downloads the official `gtk-ai/gtkai-*` filters by default alongside the core binary.
+`install.sh` downloads the official `gtk-ai/*` filters by default alongside the core binary.
 
-The reference template repository for building a new filter is `gtk-ai/gtkai-date`.
+The reference template repository for building a new filter is [gtk-ai/date](https://github.com/gtk-ai/date) ([HOWTO.md](https://github.com/gtk-ai/date/blob/main/HOWTO.md)).
 
 ### Built-ins as fallback
 
@@ -293,7 +301,7 @@ Built-in filters (compiled into `gtkai`) remain active as fallback when no exter
 
 ### Built-in migration
 
-Built-ins migrate to external repos gradually — one `gtk-ai/gtkai-<command>` repository at a time:
+Built-ins migrate to external repos gradually — one `gtk-ai/<cmd>` repository at a time:
 
 1. Publish the external filter and add it to `filters/official.json`.
 2. `install.sh` installs it by default; the external filter shadows the built-in.
@@ -301,8 +309,10 @@ Built-ins migrate to external repos gradually — one `gtk-ai/gtkai-<command>` r
 
 Until step 3, the built-in remains compiled in as fallback.
 
+Official filter repos follow `gtk-ai/<cmd>` (Go module `github.com/gtk-ai/<cmd>`, filter id `gtk-ai/<cmd>`).
+
 ## Pending
 
-- Migrate remaining built-ins to external `gtk-ai/gtkai-*` repos (gradual; `date` done).
+- Migrate remaining built-ins to external `gtk-ai/*` repos (gradual; `date` done).
 - Native `Grep`/`Glob` filtering in PostToolUse.
 - `gain` per-filter attribution by `filter_id`.

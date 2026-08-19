@@ -41,13 +41,13 @@ func TestInstallConflictAbortsWithoutReplace(t *testing.T) {
 		t.Fatal(err)
 	}
 	existing := filterregistry.Record{
-		ID:           "acme/gtkai-date",
-		Module:       "github.com/acme/gtkai-date",
+		ID:           "acme/date",
+		Module:       "github.com/acme/date",
 		Version:      "v0.1.0",
 		Argv0:        "date",
 		Contract:     "subprocess/v1",
-		BinaryPath:   filepath.Join(home, ".gtk-ai/filters/acme/gtkai-date/acme-gtkai-date"),
-		ManifestPath: filepath.Join(home, ".gtk-ai/filters/acme/gtkai-date/gtkai.json"),
+		BinaryPath:   filepath.Join(home, ".gtk-ai/filters/acme/date/date"),
+		ManifestPath: filepath.Join(home, ".gtk-ai/filters/acme/date/gtkai.json"),
 		InstalledAt:  time.Now().Add(-time.Hour),
 	}
 	if err := db.Install(existing); err != nil {
@@ -56,14 +56,14 @@ func TestInstallConflictAbortsWithoutReplace(t *testing.T) {
 	db.Close()
 
 	_, err = filterinstall.Install(filterinstall.Options{
-		Module:      "github.com/gtk-ai/gtkai-date",
-		Version:     "v0.10.1",
+		Module:      "github.com/gtk-ai/date",
+		Version:     "v0.11.0",
 		CoreVersion: "0.10.0",
 	})
 	if err == nil {
 		t.Fatal("expected install to abort without --replace")
 	}
-	if !strings.Contains(err.Error(), "acme/gtkai-date") || !strings.Contains(err.Error(), "--replace") {
+	if !strings.Contains(err.Error(), "acme/date") || !strings.Contains(err.Error(), "--replace") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -76,7 +76,7 @@ func TestInstallConflictAbortsWithoutReplace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if active == nil || active.ID != "acme/gtkai-date" {
+	if active == nil || active.ID != "acme/date" {
 		t.Fatalf("active filter must remain unchanged: %+v", active)
 	}
 }
@@ -89,13 +89,13 @@ func TestInstallConflictWithReplace(t *testing.T) {
 		t.Fatal(err)
 	}
 	existing := filterregistry.Record{
-		ID:           "acme/gtkai-date",
-		Module:       "github.com/acme/gtkai-date",
+		ID:           "acme/date",
+		Module:       "github.com/acme/date",
 		Version:      "v0.1.0",
 		Argv0:        "date",
 		Contract:     "subprocess/v1",
-		BinaryPath:   filepath.Join(home, ".gtk-ai/filters/acme/gtkai-date/acme-gtkai-date"),
-		ManifestPath: filepath.Join(home, ".gtk-ai/filters/acme/gtkai-date/gtkai.json"),
+		BinaryPath:   filepath.Join(home, ".gtk-ai/filters/acme/date/date"),
+		ManifestPath: filepath.Join(home, ".gtk-ai/filters/acme/date/gtkai.json"),
 		InstalledAt:  time.Now().Add(-time.Hour),
 	}
 	if err := db.Install(existing); err != nil {
@@ -105,8 +105,8 @@ func TestInstallConflictWithReplace(t *testing.T) {
 
 	stderr := captureStderr(t, func() {
 		if _, err := filterinstall.Install(filterinstall.Options{
-			Module:      "github.com/gtk-ai/gtkai-date",
-			Version:     "v0.10.1",
+			Module:      "github.com/gtk-ai/date",
+			Version:     "v0.11.0",
 			CoreVersion: "0.10.0",
 			Replace:     true,
 		}); err != nil {
@@ -126,10 +126,10 @@ func TestInstallConflictWithReplace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if active == nil || active.ID != "gtk-ai/gtkai-date" {
+	if active == nil || active.ID != "gtk-ai/date" {
 		t.Fatalf("active filter: %+v", active)
 	}
-	got, err := db.Get("acme/gtkai-date")
+	got, err := db.Get("acme/date")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,8 +142,8 @@ func TestUninstallRemovesInstallDir(t *testing.T) {
 	testhome.Isolated(t)
 
 	rec, err := filterinstall.Install(filterinstall.Options{
-		Module:      "github.com/gtk-ai/gtkai-date",
-		Version:     "v0.10.1",
+		Module:      "github.com/gtk-ai/date",
+		Version:     "v0.11.0",
 		CoreVersion: "0.10.0",
 	})
 	if err != nil {
@@ -187,13 +187,13 @@ func TestUninstallPromotesPreviousFilter(t *testing.T) {
 		t.Fatal(err)
 	}
 	older := filterregistry.Record{
-		ID:           "acme/gtkai-date",
-		Module:       "github.com/acme/gtkai-date",
+		ID:           "acme/date",
+		Module:       "github.com/acme/date",
 		Version:      "v0.1.0",
 		Argv0:        "date",
 		Contract:     "subprocess/v1",
-		BinaryPath:   filepath.Join(home, ".gtk-ai/filters/acme/gtkai-date/acme-gtkai-date"),
-		ManifestPath: filepath.Join(home, ".gtk-ai/filters/acme/gtkai-date/gtkai.json"),
+		BinaryPath:   filepath.Join(home, ".gtk-ai/filters/acme/date/date"),
+		ManifestPath: filepath.Join(home, ".gtk-ai/filters/acme/date/gtkai.json"),
 		InstalledAt:  time.Now().Add(-time.Hour),
 	}
 	if err := db.Install(older); err != nil {
@@ -202,8 +202,8 @@ func TestUninstallPromotesPreviousFilter(t *testing.T) {
 	db.Close()
 
 	newer, err := filterinstall.Install(filterinstall.Options{
-		Module:      "github.com/gtk-ai/gtkai-date",
-		Version:     "v0.10.1",
+		Module:      "github.com/gtk-ai/date",
+		Version:     "v0.11.0",
 		CoreVersion: "0.10.0",
 		Replace:     true,
 	})

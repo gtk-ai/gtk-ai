@@ -11,7 +11,7 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-var idRegex = regexp.MustCompile(`^[a-z0-9_-]+/gtkai-[a-z0-9_-]+$`)
+var idRegex = regexp.MustCompile(`^[a-z0-9_-]+/[a-z0-9_-]+$`)
 
 // Validate checks manifest fields, platform, and core version compatibility.
 func (m *Manifest) Validate(runningGtkai, platform string) error {

@@ -68,7 +68,7 @@ Claude Code still needs the plugin after the marketplace is registered:
 claude plugin install -s user gtk-ai@gtk-ai
 ```
 
-The install script also runs `gtkai filter install-official` for the filters listed in `filters/official.json` (currently `gtk-ai/gtkai-date`).
+The install script also runs `gtkai filter install-official` for the filters listed in `filters/official.json` (currently `gtk-ai/date`).
 
 Then restart the agent.
 
@@ -113,16 +113,16 @@ Each module handles one command. All built-in modules ship with the binary.
 | `tree` | `tree` | Entry count + capped listing |
 | `gain` | — | SQLite analytics: recorded on each proxy run |
 
-Some commands use **external filters** — standalone repos installed separately (for example `github.com/gtk-ai/gtkai-date`). `install.sh` installs the official list from `filters/official.json`. Built-in modules remain as fallback until migrated.
+Some commands use **external filters** — standalone repos installed separately (for example `github.com/gtk-ai/date`). `install.sh` installs the official list from `filters/official.json`. Built-in modules remain as fallback until migrated.
 
 ### External filter commands
 
 ```bash
-gtkai filter install github.com/gtk-ai/gtkai-date@v0.10.1
-gtkai filter install github.com/gtk-ai/gtkai-date@v0.10.1 --replace
+gtkai filter install github.com/gtk-ai/date@v0.11.0
+gtkai filter install github.com/gtk-ai/date@v0.11.0 --replace
 gtkai filter install-official filters/official.json --core-version=0.11.0-beta.1
 gtkai filter list
-gtkai filter uninstall gtk-ai/gtkai-date
+gtkai filter uninstall gtk-ai/date
 ```
 
 | Command | Description |
@@ -131,11 +131,15 @@ gtkai filter uninstall gtk-ai/gtkai-date
 | `filter install … --replace` | Required when another filter is already **active** for the same shell command |
 | `filter install-official <file>` | Install every entry in `filters/official.json` (`install.sh` uses this; `--replace` is implicit) |
 | `filter list` | List installed filters; marks the active one per command |
-| `filter uninstall <id>` | Remove by full id (e.g. `gtk-ai/gtkai-date`); deletes `~/.gtk-ai/filters/<id>/` |
+| `filter uninstall <id>` | Remove by full id (e.g. `gtk-ai/date`); deletes `~/.gtk-ai/filters/<id>/` |
 
-**Conflict policy:** if filter `acme/gtkai-date` is active for `date`, installing `gtk-ai/gtkai-date` aborts unless you pass `--replace`. With `--replace`, the new filter becomes active; the previous one stays installed but inactive (not deleted). To remove it: `filter uninstall acme/gtkai-date`. To switch back: reinstall the other filter with `--replace`.
+**Conflict policy:** if filter `acme/date` is active for `date`, installing `gtk-ai/date` aborts unless you pass `--replace`. With `--replace`, the new filter becomes active; the previous one stays installed but inactive (not deleted). To remove it: `filter uninstall acme/date`. To switch back: reinstall the other filter with `--replace`.
 
 Same filter id, new version: upgrade without `--replace`. Uninstalling the active filter promotes the most recently installed survivor for that command, or falls back to the built-in module when one exists.
+
+### subprocess/v1
+
+External filters use contract **`subprocess/v1`**: gtk-ai runs the filter as an external program and exchanges JSON on stdin/stdout (rewrite + filter_output). Any language works if the binary implements the protocol. See [ARCHITECTURE.md](ARCHITECTURE.md) and the reference module [gtk-ai/date](https://github.com/gtk-ai/date).
 
 ## Adding a module
 
