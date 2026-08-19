@@ -87,10 +87,12 @@ func TestManifest(t *testing.T) {
 	var m struct {
 		ID              string   `json:"id"`
 		Filters         []string `json:"filters"`
-		Version         string   `json:"version"`
 		Platforms       []string `json:"platforms"`
 		Contract        string   `json:"contract"`
-		MinGtkaiVersion string   `json:"min_gtkai_version"`
+		GtkaiCoreVersion struct {
+			Semver  string `json:"semver"`
+			Require string `json:"require"`
+		} `json:"gtkai-core-version"`
 	}
 	if err := json.Unmarshal(data, &m); err != nil {
 		t.Fatalf("parse filter.json: %v", err)
@@ -104,8 +106,13 @@ func TestManifest(t *testing.T) {
 	if m.Contract != "subprocess/v1" {
 		t.Fatalf("unexpected contract: %q", m.Contract)
 	}
-	if m.Version == "" || m.MinGtkaiVersion == "" {
-		t.Fatal("version fields must not be empty")
+	if m.GtkaiCoreVersion.Semver == "" {
+		t.Fatal("gtkai-core-version.semver must not be empty")
+	}
+	switch m.GtkaiCoreVersion.Require {
+	case "min", "exact":
+	default:
+		t.Fatalf("gtkai-core-version.require must be min or exact, got %q", m.GtkaiCoreVersion.Require)
 	}
 	if len(m.Platforms) == 0 {
 		t.Fatal("platforms must not be empty")
