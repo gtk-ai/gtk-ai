@@ -1,0 +1,236 @@
+// Tests de instalación.
+// Ejercitan install.sh con HOME y GTKAI_INSTALL_DIR apuntando a directorios
+// temporales, verificando que la detección de agentes, el flujo dry-run,
+// y la configuración de cada agente produzcan los archivos y entradas correctas.
+package main_test
+
+import (
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+// installScript devuelve la ruta absoluta a install.sh.
+func installScript(t *testing.T) string {
+	t.Helper()
+	return filepath.Join(moduleRoot(t), "install.sh")
+}
+
+// runInstall ejecuta install.sh con el entorno dado y devuelve stdout+stderr y el exit code.
+func runInstall(t *testing.T, env []string, args ...string) (string, int) {
+	t.Helper()
+	sh := installScript(t)
+	cmd := exec.Command("sh", append([]string{sh}, args...)...)
+	cmd.Env = env
+	out, err := cmd.CombinedOutput()
+	code := 0
+	if err != nil {
+		if ee, ok := err.(*exec.ExitError); ok {
+			code = ee.ExitCode()
+		} else {
+			t.Fatalf("exec install.sh: %v", err)
+		}
+	}
+	return string(out), code
+}
+
+// baseEnv construye un entorno mínimo para install.sh que:
+//   - apunta HOME a un directorio temporal
+//   - apunta GTKAI_INSTALL_DIR a un directorio temporal con el binario ya compilado
+//   - usa GTKAI_SKIP_BINARY=1 para no intentar descargar nada de la red
+//   - usa GTKAI_SCRIPTS_DIR apuntando a scripts/ del repo local
+func baseEnv(t *testing.T, home, installDir string) []string {
+	t.Helper()
+	bin := buildBinary(t)
+	// copiar el binario compilado al directorio de instalación simulado
+	dst := filepath.Join(installDir, "gtkai")
+	data, err := os.ReadFile(bin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(dst, data, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	scriptsDir := filepath.Join(moduleRoot(t), "scripts")
+	return []string{
+		"HOME=" + home,
+		"GTKAI_INSTALL_DIR=" + installDir,
+		"GTKAI_SKIP_BINARY=1",
+		"GTKAI_SCRIPTS_DIR=" + scriptsDir,
+		"PATH=" + installDir + ":" + os.Getenv("PATH"),
+		"SHELL=/bin/sh",
+	}
+}
+
+func TestInstallDryRun(t *testing.T) {
+	home := t.TempDir()
+	installDir := t.TempDir()
+	env := append(baseEnv(t, home, installDir), "GTKAI_DRY_RUN=true", "GTKAI_AGENT=claudecode")
+
+	out, code := runInstall(t, env)
+	if code != 0 {
+		t.Fatalf("dry-run exit %d:\n%s", code, out)
+	}
+	if !strings.Contains(out, "dry-run") {
+		t.Fatalf("expected dry-run message in output:\n%s", out)
+	}
+	// en dry-run no deben crearse archivos de configuración del agente
+	if _, err := os.Stat(filepath.Join(home, ".claude", "settings.json")); err == nil {
+		t.Fatal("dry-run must not write agent config files")
+	}
+}
+
+func TestInstallClaudeCode(t *testing.T) {
+	home := t.TempDir()
+	installDir := t.TempDir()
+	env := baseEnv(t, home, installDir)
+
+	out, code := runInstall(t, env, "--agent=claudecode")
+	if code != 0 {
+		t.Fatalf("claudecode install exit %d:\n%s", code, out)
+	}
+	// settings.json debe existir con la clave extraKnownMarketplaces
+	settingsPath := filepath.Join(home, ".claude", "settings.json")
+	if _, err := os.Stat(settingsPath); err != nil {
+		t.Fatalf("settings.json not created: %v", err)
+	}
+	data, _ := os.ReadFile(settingsPath)
+	if !strings.Contains(string(data), "gtk-ai") {
+		t.Fatalf("settings.json does not contain gtk-ai entry:\n%s", data)
+	}
+	// gtk-ai.md debe existir
+	if _, err := os.Stat(filepath.Join(home, ".claude", "gtk-ai.md")); err != nil {
+		t.Fatalf("gtk-ai.md not created: %v", err)
+	}
+	// CLAUDE.md debe incluir @gtk-ai.md
+	claudeMD, err := os.ReadFile(filepath.Join(home, ".claude", "CLAUDE.md"))
+	if err != nil {
+		t.Fatalf("CLAUDE.md not created: %v", err)
+	}
+	if !strings.Contains(string(claudeMD), "@gtk-ai.md") {
+		t.Fatalf("CLAUDE.md does not include @gtk-ai.md:\n%s", claudeMD)
+	}
+}
+
+func TestInstallCursor(t *testing.T) {
+	home := t.TempDir()
+	installDir := t.TempDir()
+	env := baseEnv(t, home, installDir)
+
+	out, code := runInstall(t, env, "--agent=cursor")
+	if code != 0 {
+		t.Fatalf("cursor install exit %d:\n%s", code, out)
+	}
+	// scripts de hooks deben estar instalados
+	hooksDir := filepath.Join(home, ".cursor", "hooks")
+	for _, script := range []string{"gtkai-pre-tool-use.sh", "gtkai-post-tool-use.sh"} {
+		p := filepath.Join(hooksDir, script)
+		info, err := os.Stat(p)
+		if err != nil {
+			t.Fatalf("cursor hook %s not installed: %v", script, err)
+		}
+		if info.Mode()&0o111 == 0 {
+			t.Fatalf("cursor hook %s is not executable", script)
+		}
+	}
+	// hooks.json debe contener la entrada preToolUse
+	hooksJSON, err := os.ReadFile(filepath.Join(home, ".cursor", "hooks.json"))
+	if err != nil {
+		t.Fatalf("hooks.json not created: %v", err)
+	}
+	if !strings.Contains(string(hooksJSON), "gtkai-pre-tool-use.sh") {
+		t.Fatalf("hooks.json does not register preToolUse hook:\n%s", hooksJSON)
+	}
+	// regla de contexto
+	if _, err := os.Stat(filepath.Join(home, ".cursor", "rules", "gtk-ai.mdc")); err != nil {
+		t.Fatalf("gtk-ai.mdc rule not installed: %v", err)
+	}
+}
+
+func TestInstallCodex(t *testing.T) {
+	home := t.TempDir()
+	installDir := t.TempDir()
+	env := baseEnv(t, home, installDir)
+
+	out, code := runInstall(t, env, "--agent=codex")
+	if code != 0 {
+		t.Fatalf("codex install exit %d:\n%s", code, out)
+	}
+	// hook pre-tool-use debe estar instalado
+	hookPath := filepath.Join(home, ".codex", "hooks", "gtkai-pre-tool-use.sh")
+	info, err := os.Stat(hookPath)
+	if err != nil {
+		t.Fatalf("codex hook not installed: %v", err)
+	}
+	if info.Mode()&0o111 == 0 {
+		t.Fatal("codex hook is not executable")
+	}
+	// hooks.json debe contener PreToolUse
+	hooksJSON, err := os.ReadFile(filepath.Join(home, ".codex", "hooks.json"))
+	if err != nil {
+		t.Fatalf("hooks.json not created: %v", err)
+	}
+	if !strings.Contains(string(hooksJSON), "PreToolUse") {
+		t.Fatalf("hooks.json does not register PreToolUse:\n%s", hooksJSON)
+	}
+	// config.toml debe habilitar codex_hooks
+	configTOML, err := os.ReadFile(filepath.Join(home, ".codex", "config.toml"))
+	if err != nil {
+		t.Fatalf("config.toml not created: %v", err)
+	}
+	if !strings.Contains(string(configTOML), "codex_hooks") {
+		t.Fatalf("config.toml does not enable codex_hooks:\n%s", configTOML)
+	}
+}
+
+func TestInstallOpenCode(t *testing.T) {
+	home := t.TempDir()
+	installDir := t.TempDir()
+	env := baseEnv(t, home, installDir)
+
+	out, code := runInstall(t, env, "--agent=opencode")
+	if code != 0 {
+		t.Fatalf("opencode install exit %d:\n%s", code, out)
+	}
+	// plugin ts debe estar instalado
+	pluginPath := filepath.Join(home, ".config", "opencode", "plugins", "gtkai.ts")
+	if _, err := os.Stat(pluginPath); err != nil {
+		t.Fatalf("opencode plugin not installed: %v", err)
+	}
+}
+
+func TestInstallUnknownAgentFails(t *testing.T) {
+	home := t.TempDir()
+	installDir := t.TempDir()
+	env := baseEnv(t, home, installDir)
+
+	_, code := runInstall(t, env, "--agent=unknown")
+	if code == 0 {
+		t.Fatal("install with unknown agent must exit non-zero")
+	}
+}
+
+// TestInstallIdempotentClaudeCode verifica que ejecutar install.sh dos veces
+// no duplica entradas en CLAUDE.md ni falla.
+func TestInstallIdempotentClaudeCode(t *testing.T) {
+	home := t.TempDir()
+	installDir := t.TempDir()
+	env := baseEnv(t, home, installDir)
+
+	for i := 0; i < 2; i++ {
+		out, code := runInstall(t, env, "--agent=claudecode")
+		if code != 0 {
+			t.Fatalf("run %d exit %d:\n%s", i+1, code, out)
+		}
+	}
+	claudeMD, err := os.ReadFile(filepath.Join(home, ".claude", "CLAUDE.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	count := strings.Count(string(claudeMD), "@gtk-ai.md")
+	if count != 1 {
+		t.Fatalf("expected exactly 1 @gtk-ai.md entry, got %d:\n%s", count, claudeMD)
+	}
+}
