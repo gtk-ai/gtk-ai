@@ -1,6 +1,9 @@
 package gtkai_date_test
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -89,5 +92,41 @@ func TestID(t *testing.T) {
 func TestName(t *testing.T) {
 	if module().Name() != "date" {
 		t.Fatalf("Name() must return the shell command intercepted")
+	}
+}
+
+func TestFilterManifest(t *testing.T) {
+	path := filepath.Join("filter.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read filter.json: %v", err)
+	}
+
+	var manifest struct {
+		ID              string   `json:"id"`
+		Filters         []string `json:"filters"`
+		Version         string   `json:"version"`
+		Platforms       []string `json:"platforms"`
+		Contract        string   `json:"contract"`
+		MinGtkaiVersion string   `json:"min_gtkai_version"`
+	}
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		t.Fatalf("parse filter.json: %v", err)
+	}
+
+	if manifest.ID != gtkai_date.ID {
+		t.Fatalf("manifest id %q != code id %q", manifest.ID, gtkai_date.ID)
+	}
+	if len(manifest.Filters) != 1 || manifest.Filters[0] != module().Name() {
+		t.Fatalf("unexpected filters list: %v", manifest.Filters)
+	}
+	if manifest.Contract != "subprocess/v1" {
+		t.Fatalf("unexpected contract: %q", manifest.Contract)
+	}
+	if manifest.Version == "" || manifest.MinGtkaiVersion == "" {
+		t.Fatal("version fields must not be empty")
+	}
+	if len(manifest.Platforms) == 0 {
+		t.Fatal("platforms must not be empty")
 	}
 }
