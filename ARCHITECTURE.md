@@ -173,9 +173,96 @@ The exact transport (Go plugin, subprocess + manifest, static binary) is an impl
 | `docker` (ps, images, logs, compose ps/logs) | `modules/docker` | 0.9.0 |
 | Multi-runtime: Cursor, Codex, OpenCode | `internal/hook` | 0.10.0 |
 
+## §4 — External filter transport
+
+### Transport: subprocess/v1
+
+Each external filter is a standalone binary. The core communicates with it via stdin/stdout using a line-delimited JSON protocol. No shared memory, no dynamic linking.
+
+Go plugin (`.so`) is explicitly out of scope and will not be implemented.
+
+### JSON contract
+
+Request (core → filter binary):
+
+```json
+{
+  "operation": "rewrite" | "filter_output",
+  "args": ["<argv0>", "…"],
+  "output": "<stdout+stderr, filter_output only>",
+  "exit_code": 0
+}
+```
+
+Response (filter binary → core):
+
+```json
+{
+  "args": ["<rewritten args, rewrite only>"],
+  "changed": true,
+  "output": "<filtered output, filter_output only>"
+}
+```
+
+`exit_code` is -1 when unknown (native tool post-hook). `changed` signals whether the core should use the rewritten value; unchanged responses short-circuit further processing.
+
+### filter.json manifest (required)
+
+Every filter binary ships a `filter.json` at the root of its repository:
+
+```json
+{
+  "id": "author/gtkai-<command>",
+  "filters": ["<argv0>"],
+  "version": "1.2.3",
+  "platforms": ["linux/amd64", "darwin/arm64"],
+  "contract": "subprocess/v1",
+  "min_gtkai_version": "0.11.0"
+}
+```
+
+All fields are required. `id` must match `^[a-z0-9_-]+/gtkai-[a-z0-9_-]+$`. `version` and `min_gtkai_version` must be valid semver.
+
+### Validation on install
+
+`gtkai filter install` performs these checks in order before committing anything to the registry:
+
+1. `filter.json` is present and parses without error.
+2. `id` matches the naming rule regex.
+3. `version` and `min_gtkai_version` are valid semver; running `gtkai` satisfies `min_gtkai_version`.
+4. `contract` is `subprocess/v1`.
+5. Running platform appears in `platforms`.
+6. Liveness check: spawn the binary with `{"operation":"rewrite","args":[],"output":"","exit_code":0}` and expect a valid response within 500 ms.
+
+Any failure aborts the install with a descriptive error. No partial state is written.
+
+### Persistence
+
+Installed filters are recorded in `~/.gtk-ai/filters.db` (SQLite). The path is resolved via `internal/storage.Dir()`. Schema: `id`, `filters`, `version`, `contract`, `binary_path`, `installed_at`.
+
+### Binary layout
+
+```
+~/.gtk-ai/filters/<id>/
+    <binary>
+    filter.json
+```
+
+Binaries are downloaded from the GitHub Releases page of the filter repository and stored under the namespaced path.
+
+### Official filters and install.sh
+
+`install.sh` downloads the official `gtk-ai/gtkai-*` filters by default alongside the core binary.
+
+The reference template repository for building a new filter is `gtk-ai/gtkai-date`.
+
+### Built-ins as fallback
+
+Built-in filters (compiled into `gtkai`) remain active as fallback when no external filter is installed for a given argv0. Installing an external filter for the same command makes it active and shadows the built-in; uninstalling it restores the built-in.
+
 ## Pending
 
 - §4 — filter registry with namespaced ids (`gtk-ai/gtkai-*`), `filter install/uninstall/list`, migrate built-ins.
 - Native `Grep`/`Glob` filtering in PostToolUse.
-- `gain` per-filter attribution by `id`.
+- `gain` per-filter attribution by `filter_id`.
 - `gtk-ai` GitHub organisation + per-filter repositories (marketplace prerequisite; not required for §4 core work).
