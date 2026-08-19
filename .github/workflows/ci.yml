@@ -28,7 +28,7 @@ jobs:
 
       - name: Check version consistency
         run: |
-          go_ver=$(grep 'const version = ' cmd/gtkai/main.go | sed 's/.*"\([0-9.]*\)".*/\1/')
+          go_ver=$(grep 'const version = ' cmd/gtkai/main.go | sed 's/.*"\([^"]*\)".*/\1/')
           if [ -z "$go_ver" ]; then
             echo "could not extract version from cmd/gtkai/main.go"
             exit 1
@@ -47,7 +47,7 @@ jobs:
           check ".claude-plugin/marketplace.json"   "$(jq -r '.plugins[0].version' .claude-plugin/marketplace.json)"
           check ".claude-plugin/plugin.json"        "$(jq -r '.version' .claude-plugin/plugin.json)"
           check "plugin/.claude-plugin/plugin.json" "$(jq -r '.version' plugin/.claude-plugin/plugin.json)"
-          check "modules/mcpscan/mcpscan.go"        "$(sed -n 's/.*"version": "\([0-9.]*\)".*/\1/p' modules/mcpscan/mcpscan.go | head -1)"
+          check "modules/mcpscan/mcpscan.go"        "$(sed -n 's/.*"version": "\([^"]*\)".*/\1/p' modules/mcpscan/mcpscan.go | head -1)"
           exit $failed
 
       - name: Check plugin manifest field consistency
