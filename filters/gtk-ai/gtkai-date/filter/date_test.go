@@ -1,12 +1,12 @@
-package gtkai_date_test
+package filter_test
 
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
-	gtkai_date "github.com/jmeiracorbal/gtk-ai/filters/gtk-ai/gtkai-date"
 	"github.com/jmeiracorbal/gtk-ai/filters/gtk-ai/gtkai-date/filter"
 )
 
@@ -22,7 +22,7 @@ func TestRewriteNoArgs(t *testing.T) {
 	}
 }
 
-func TestRewriteWithFormatPassthrough(t *testing.T) {
+func TestRewriteWithFormat(t *testing.T) {
 	_, ok := filter.Rewrite([]string{"+%d/%m/%Y"})
 	if ok {
 		t.Fatal("must not rewrite when format already present")
@@ -45,7 +45,7 @@ func TestRewriteWithUtcFlag(t *testing.T) {
 	}
 }
 
-func TestRewriteWithFormatAndFlag(t *testing.T) {
+func TestRewriteWithFlagAndFormat(t *testing.T) {
 	_, ok := filter.Rewrite([]string{"-u", "+%s"})
 	if ok {
 		t.Fatal("must not rewrite when format already present alongside flags")
@@ -61,9 +61,9 @@ func TestFilterOutputTrimsNewline(t *testing.T) {
 	}
 }
 
-func TestFilterOutputNonZeroExitPassthrough(t *testing.T) {
-	out := filter.FilterOutput(nil, "date: invalid option\n", 1)
-	if out != "date: invalid option\n" {
+func TestFilterOutputPreservesOnSingleNewline(t *testing.T) {
+	out := filter.FilterOutput(nil, "2026-08-19T14:30:00Z\n", 0)
+	if out != "2026-08-19T14:30:00Z\n" {
 		t.Fatalf("unexpected: %q", out)
 	}
 }
@@ -71,23 +71,20 @@ func TestFilterOutputNonZeroExitPassthrough(t *testing.T) {
 // --- ID ---
 
 func TestID(t *testing.T) {
-	if gtkai_date.ID != "gtk-ai/gtkai-date" {
-		t.Fatalf("ID %q does not follow author/gtkai-<command> rule", gtkai_date.ID)
-	}
-	if filter.ID != gtkai_date.ID {
-		t.Fatalf("filter.ID %q != package ID %q", filter.ID, gtkai_date.ID)
+	if filter.ID != "gtk-ai/gtkai-date" {
+		t.Fatalf("ID %q does not follow author/gtkai-<command> rule", filter.ID)
 	}
 }
 
 // --- filter.json manifest ---
 
-func TestFilterManifest(t *testing.T) {
-	data, err := os.ReadFile("filter.json")
+func TestManifest(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "filter.json"))
 	if err != nil {
 		t.Fatalf("read filter.json: %v", err)
 	}
 
-	var manifest struct {
+	var m struct {
 		ID              string   `json:"id"`
 		Filters         []string `json:"filters"`
 		Version         string   `json:"version"`
@@ -95,22 +92,22 @@ func TestFilterManifest(t *testing.T) {
 		Contract        string   `json:"contract"`
 		MinGtkaiVersion string   `json:"min_gtkai_version"`
 	}
-	if err := json.Unmarshal(data, &manifest); err != nil {
+	if err := json.Unmarshal(data, &m); err != nil {
 		t.Fatalf("parse filter.json: %v", err)
 	}
-	if manifest.ID != gtkai_date.ID {
-		t.Fatalf("manifest id %q != code id %q", manifest.ID, gtkai_date.ID)
+	if m.ID != filter.ID {
+		t.Fatalf("manifest id %q != code id %q", m.ID, filter.ID)
 	}
-	if len(manifest.Filters) != 1 || manifest.Filters[0] != "date" {
-		t.Fatalf("unexpected filters list: %v", manifest.Filters)
+	if len(m.Filters) != 1 || m.Filters[0] != "date" {
+		t.Fatalf("unexpected filters: %v", m.Filters)
 	}
-	if manifest.Contract != "subprocess/v1" {
-		t.Fatalf("unexpected contract: %q", manifest.Contract)
+	if m.Contract != "subprocess/v1" {
+		t.Fatalf("unexpected contract: %q", m.Contract)
 	}
-	if manifest.Version == "" || manifest.MinGtkaiVersion == "" {
+	if m.Version == "" || m.MinGtkaiVersion == "" {
 		t.Fatal("version fields must not be empty")
 	}
-	if len(manifest.Platforms) == 0 {
+	if len(m.Platforms) == 0 {
 		t.Fatal("platforms must not be empty")
 	}
 }
