@@ -71,7 +71,7 @@ func TestInstallOfficial(t *testing.T) {
 
 	root := moduleRoot(t)
 	official := filepath.Join(root, "filters/official.json")
-	installed, err := filterinstall.InstallOfficial(official, "0.11.0", "")
+	installed, err := filterinstall.InstallOfficial(official, "0.11.0-beta.2", "")
 	if err != nil {
 		t.Fatal(err)
 	}

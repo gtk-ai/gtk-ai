@@ -105,6 +105,31 @@ func TestValidateCommandEmpty(t *testing.T) {
 	}
 }
 
+func TestValidateGtkaiCoreVersionMinPrereleaseBase(t *testing.T) {
+	m := &filtermanifest.Manifest{
+		GtkaiCoreVersion: filtermanifest.GtkaiCoreVersion{
+			Version:    "0.11.0",
+			Constraint: "min",
+		},
+	}
+	if err := m.ValidateGtkaiCoreVersion("0.11.0-beta.2"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestValidateGtkaiCoreVersionMinPrereleaseBelowBase(t *testing.T) {
+	m := &filtermanifest.Manifest{
+		GtkaiCoreVersion: filtermanifest.GtkaiCoreVersion{
+			Version:    "0.11.0",
+			Constraint: "min",
+		},
+	}
+	err := m.ValidateGtkaiCoreVersion("0.10.0-beta.1")
+	if err == nil {
+		t.Fatal("expected error for pre-release below required base")
+	}
+}
+
 func TestParseGtkaiDateManifest(t *testing.T) {
 	dir, err := downloadModuleDir("github.com/gtk-ai/date@v0.12.0")
 	if err != nil {

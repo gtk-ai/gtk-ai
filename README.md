@@ -1,7 +1,7 @@
 # gtk-ai
 
 ![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go&logoColor=white)
-![Version](https://img.shields.io/badge/version-0.11.0--beta.1-blue?style=flat)
+![Version](https://img.shields.io/badge/version-0.11.0--beta.2-blue?style=flat)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue?style=flat)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-blueviolet?style=flat)
 ![Cursor](https://img.shields.io/badge/Cursor-hooks-000000?style=flat)
@@ -120,7 +120,7 @@ Some commands use **external filters** — standalone repos installed separately
 ```bash
 gtkai filter install github.com/gtk-ai/date@v0.12.0
 gtkai filter install github.com/gtk-ai/date@v0.12.0 --replace
-gtkai filter install-official filters/official.json --core-version=0.11.0
+gtkai filter install-official filters/official.json --core-version=0.11.0-beta.2
 gtkai filter list
 gtkai filter uninstall gtk-ai/date
 ```

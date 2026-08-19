@@ -166,7 +166,7 @@ func installOfficialFilters(t *testing.T) string {
 	t.Helper()
 	home := testhome.Isolated(t)
 	official := filepath.Join(moduleRoot(t), "filters/official.json")
-	if _, err := filterinstall.InstallOfficial(official, "0.11.0", ""); err != nil {
+	if _, err := filterinstall.InstallOfficial(official, "0.11.0-beta.2", ""); err != nil {
 		t.Fatal(err)
 	}
 	return home

@@ -80,7 +80,7 @@ func ParseFile(path string) (*Manifest, error) {
 func (m *Manifest) ValidateGtkaiCoreVersion(runningGtkai string) error {
 	switch m.GtkaiCoreVersion.Constraint {
 	case "min":
-		if semver.Compare(normalizeSemver(runningGtkai), normalizeSemver(m.GtkaiCoreVersion.Version)) < 0 {
+		if !satisfiesMin(runningGtkai, m.GtkaiCoreVersion.Version) {
 			return fmt.Errorf("gtkai %s < required min %s", runningGtkai, m.GtkaiCoreVersion.Version)
 		}
 	case "exact":
@@ -91,6 +91,24 @@ func (m *Manifest) ValidateGtkaiCoreVersion(runningGtkai string) error {
 		return fmt.Errorf("unknown constraint %q", m.GtkaiCoreVersion.Constraint)
 	}
 	return nil
+}
+
+func satisfiesMin(running, required string) bool {
+	runningNorm := normalizeSemver(running)
+	requiredNorm := normalizeSemver(required)
+	if semver.Compare(runningNorm, requiredNorm) >= 0 {
+		return true
+	}
+	// pre-release of the required base satisfies min (0.11.0-beta.2 >= min 0.11.0)
+	if semver.Prerelease(runningNorm) != "" && semver.Prerelease(requiredNorm) == "" {
+		if i := strings.Index(runningNorm, "-"); i > 0 {
+			base := runningNorm[:i]
+			if semver.Compare(base, requiredNorm) >= 0 {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func normalizeSemver(v string) string {
