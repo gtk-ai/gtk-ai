@@ -1,13 +1,12 @@
 package gtkai_date_test
 
 import (
-	"encoding/json"
-	"os"
 	"strings"
 	"testing"
 
 	gtkai_date "github.com/jmeiracorbal/gtk-ai/filters/gtk-ai/gtkai-date"
 	"github.com/jmeiracorbal/gtk-ai/filters/gtk-ai/gtkai-date/filter"
+	"github.com/jmeiracorbal/gtk-ai/internal/filtermanifest"
 )
 
 // --- Rewrite ---
@@ -82,42 +81,31 @@ func TestID(t *testing.T) {
 // --- filter.json manifest ---
 
 func TestFilterManifest(t *testing.T) {
-	data, err := os.ReadFile("filter.json")
+	m, err := filtermanifest.ParseFile("filter.json")
 	if err != nil {
-		t.Fatalf("read filter.json: %v", err)
+		t.Fatal(err)
 	}
-
-	var manifest struct {
-		ID              string   `json:"id"`
-		Filters         []string `json:"filters"`
-		Platforms       []string `json:"platforms"`
-		Contract        string   `json:"contract"`
-		GtkaiCoreVersion struct {
-			Semver  string `json:"semver"`
-			Require string `json:"require"`
-		} `json:"gtkai-core-version"`
+	if m.ID != gtkai_date.ID {
+		t.Fatalf("manifest id %q != code id %q", m.ID, gtkai_date.ID)
 	}
-	if err := json.Unmarshal(data, &manifest); err != nil {
-		t.Fatalf("parse filter.json: %v", err)
+	if len(m.Filters) != 1 || m.Filters[0] != "date" {
+		t.Fatalf("unexpected filters list: %v", m.Filters)
 	}
-	if manifest.ID != gtkai_date.ID {
-		t.Fatalf("manifest id %q != code id %q", manifest.ID, gtkai_date.ID)
+	if m.Contract != "subprocess/v1" {
+		t.Fatalf("unexpected contract: %q", m.Contract)
 	}
-	if len(manifest.Filters) != 1 || manifest.Filters[0] != "date" {
-		t.Fatalf("unexpected filters list: %v", manifest.Filters)
+	if m.GtkaiCoreVersion.Version == "" {
+		t.Fatal("gtkai-core-version.version must not be empty")
 	}
-	if manifest.Contract != "subprocess/v1" {
-		t.Fatalf("unexpected contract: %q", manifest.Contract)
-	}
-	if manifest.GtkaiCoreVersion.Semver == "" {
-		t.Fatal("gtkai-core-version.semver must not be empty")
-	}
-	switch manifest.GtkaiCoreVersion.Require {
+	switch m.GtkaiCoreVersion.Constraint {
 	case "min", "exact":
 	default:
-		t.Fatalf("gtkai-core-version.require must be min or exact, got %q", manifest.GtkaiCoreVersion.Require)
+		t.Fatalf("gtkai-core-version.constraint must be min or exact, got %q", m.GtkaiCoreVersion.Constraint)
 	}
-	if len(manifest.Platforms) == 0 {
+	if len(m.Platforms) == 0 {
 		t.Fatal("platforms must not be empty")
+	}
+	if err := m.ValidateGtkaiCoreVersion("0.10.0"); err != nil {
+		t.Fatalf("running gtkai 0.10.0 must satisfy manifest: %v", err)
 	}
 }
