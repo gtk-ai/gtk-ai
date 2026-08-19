@@ -11,7 +11,7 @@ import (
 
 func runFilter(args []string) {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: gtkai filter install <module@version> | install-official <official.json> | list")
+		printFilterUsage()
 		os.Exit(1)
 	}
 	switch args[0] {
@@ -19,12 +19,19 @@ func runFilter(args []string) {
 		runFilterInstall(args[1:])
 	case "install-official":
 		runFilterInstallOfficial(args[1:])
+	case "uninstall":
+		runFilterUninstall(args[1:])
 	case "list":
 		runFilterList()
 	default:
 		fmt.Fprintf(os.Stderr, "gtkai filter: unknown subcommand %q\n", args[0])
+		printFilterUsage()
 		os.Exit(1)
 	}
+}
+
+func printFilterUsage() {
+	fmt.Fprintln(os.Stderr, "usage: gtkai filter install <module@version> | install-official <official.json> | uninstall <id> | list")
 }
 
 func runFilterInstall(args []string) {
@@ -93,6 +100,19 @@ func runFilterInstallOfficial(args []string) {
 	}
 }
 
+func runFilterUninstall(args []string) {
+	if len(args) != 1 || args[0] == "" {
+		fmt.Fprintln(os.Stderr, "usage: gtkai filter uninstall <id>")
+		os.Exit(1)
+	}
+	rec, err := filterinstall.Uninstall(args[0])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "gtkai filter uninstall: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("uninstalled %s (argv0=%s)\n", rec.ID, rec.Argv0)
+}
+
 func runFilterList() {
 	db, err := filterregistry.Open()
 	if err != nil {
@@ -109,9 +129,37 @@ func runFilterList() {
 		fmt.Println("no filters installed")
 		return
 	}
-	for _, rec := range recs {
-		fmt.Printf("%s  %s@%s  argv0=%s  %s\n", rec.ID, rec.Module, rec.Version, rec.Argv0, rec.BinaryPath)
+	activeByArgv0, err := activeFilterIDs(db, recs)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "gtkai filter list: %v\n", err)
+		os.Exit(1)
 	}
+	for _, rec := range recs {
+		tag := ""
+		if activeByArgv0[rec.Argv0] == rec.ID {
+			tag = "  active"
+		}
+		fmt.Printf("%s  %s@%s  argv0=%s%s  %s\n", rec.ID, rec.Module, rec.Version, rec.Argv0, tag, rec.BinaryPath)
+	}
+}
+
+func activeFilterIDs(db *filterregistry.DB, recs []filterregistry.Record) (map[string]string, error) {
+	seen := make(map[string]struct{})
+	out := make(map[string]string)
+	for _, rec := range recs {
+		if _, ok := seen[rec.Argv0]; ok {
+			continue
+		}
+		seen[rec.Argv0] = struct{}{}
+		active, err := db.Active(rec.Argv0)
+		if err != nil {
+			return nil, err
+		}
+		if active != nil {
+			out[rec.Argv0] = active.ID
+		}
+	}
+	return out, nil
 }
 
 func releaseRepo() string {
