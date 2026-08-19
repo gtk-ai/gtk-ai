@@ -90,10 +90,12 @@ func TestFilterManifest(t *testing.T) {
 	var manifest struct {
 		ID              string   `json:"id"`
 		Filters         []string `json:"filters"`
-		Version         string   `json:"version"`
 		Platforms       []string `json:"platforms"`
 		Contract        string   `json:"contract"`
-		MinGtkaiVersion string   `json:"min_gtkai_version"`
+		GtkaiCoreVersion struct {
+			Semver  string `json:"semver"`
+			Require string `json:"require"`
+		} `json:"gtkai-core-version"`
 	}
 	if err := json.Unmarshal(data, &manifest); err != nil {
 		t.Fatalf("parse filter.json: %v", err)
@@ -107,8 +109,13 @@ func TestFilterManifest(t *testing.T) {
 	if manifest.Contract != "subprocess/v1" {
 		t.Fatalf("unexpected contract: %q", manifest.Contract)
 	}
-	if manifest.Version == "" || manifest.MinGtkaiVersion == "" {
-		t.Fatal("version fields must not be empty")
+	if manifest.GtkaiCoreVersion.Semver == "" {
+		t.Fatal("gtkai-core-version.semver must not be empty")
+	}
+	switch manifest.GtkaiCoreVersion.Require {
+	case "min", "exact":
+	default:
+		t.Fatalf("gtkai-core-version.require must be min or exact, got %q", manifest.GtkaiCoreVersion.Require)
 	}
 	if len(manifest.Platforms) == 0 {
 		t.Fatal("platforms must not be empty")

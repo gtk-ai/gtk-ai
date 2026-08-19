@@ -214,14 +214,25 @@ Every filter binary ships a `filter.json` at the root of its repository:
 {
   "id": "author/gtkai-<command>",
   "filters": ["<argv0>"],
-  "version": "1.2.3",
   "platforms": ["linux/amd64", "darwin/arm64"],
   "contract": "subprocess/v1",
-  "min_gtkai_version": "0.11.0"
+  "gtkai-core-version": {
+    "semver": "0.10.0",
+    "require": "min"
+  }
 }
 ```
 
-All fields are required. `id` must match `^[a-z0-9_-]+/gtkai-[a-z0-9_-]+$`. `version` and `min_gtkai_version` must be valid semver.
+Required fields: `id`, `filters`, `platforms`, `contract`, `gtkai-core-version`.
+
+- `id` must match `^[a-z0-9_-]+/gtkai-[a-z0-9_-]+$`.
+- `contract` must be `subprocess/v1`.
+- `gtkai-core-version.semver` must be valid semver.
+- `gtkai-core-version.require` must be `"min"` or `"exact"`:
+  - `"min"` — running `gtkai` must be `>= semver`.
+  - `"exact"` — running `gtkai` must match `semver` exactly.
+
+**Filter version is not in the manifest.** It is resolved from the install ref — the git tag of the filter repository. Example: `gtkai filter install gtk-ai/gtkai-date@v0.10.0` installs tag `v0.10.0`; the core records that version in the registry at install time.
 
 ### Validation on install
 
@@ -229,7 +240,7 @@ All fields are required. `id` must match `^[a-z0-9_-]+/gtkai-[a-z0-9_-]+$`. `ver
 
 1. `filter.json` is present and parses without error.
 2. `id` matches the naming rule regex.
-3. `version` and `min_gtkai_version` are valid semver; running `gtkai` satisfies `min_gtkai_version`.
+3. `gtkai-core-version.semver` is valid semver; running `gtkai` satisfies the `require` constraint.
 4. `contract` is `subprocess/v1`.
 5. Running platform appears in `platforms`.
 6. Liveness check: spawn the binary with `{"operation":"rewrite","args":[],"output":"","exit_code":0}` and expect a valid response within 500 ms.
