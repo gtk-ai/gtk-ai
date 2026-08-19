@@ -5,10 +5,10 @@ package gain
 import (
 	"database/sql"
 	"fmt"
-	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/jmeiracorbal/gtk-ai/internal/storage"
 	_ "modernc.org/sqlite"
 )
 
@@ -39,13 +39,9 @@ type Tracker struct {
 
 // Open opens (or creates) the gain database.
 func Open() (*Tracker, error) {
-	home := os.Getenv("HOME")
-	if home == "" {
-		return nil, fmt.Errorf("HOME is not set")
-	}
-	dir := filepath.Join(home, ".gtk-ai")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return nil, err
+	dir, err := storage.Dir()
+	if err != nil {
+		return nil, fmt.Errorf("data dir: %w", err)
 	}
 	db, err := sql.Open("sqlite", filepath.Join(dir, "gain.db"))
 	if err != nil {
