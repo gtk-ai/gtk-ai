@@ -103,6 +103,11 @@ func Install(opts Options) (*filterregistry.Record, error) {
 		return nil, err
 	}
 	defer db.Close()
+	if prev, err := db.Active(rec.Argv0); err != nil {
+		return nil, err
+	} else if prev != nil && prev.ID != rec.ID {
+		fmt.Fprintf(os.Stderr, "warning: replacing active filter %s with %s for command %q\n", prev.ID, rec.ID, rec.Argv0)
+	}
 	if err := db.Install(rec); err != nil {
 		return nil, err
 	}

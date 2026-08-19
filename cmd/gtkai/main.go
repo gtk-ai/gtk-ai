@@ -44,7 +44,8 @@ Usage:
   gtkai gain                       Show token savings analytics
   gtkai filter install <mod@ver>   Install an external filter module (go dependency)
   gtkai filter install-official <file> --core-version=<ver>  Install filters from official.json
-  gtkai filter list                List installed external filters
+  gtkai filter uninstall <id>      Remove an installed filter by full id
+  gtkai filter list                List installed external filters (active marked)
   gtkai version                    Print version
 
 Agents:

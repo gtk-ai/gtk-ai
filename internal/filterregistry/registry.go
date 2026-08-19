@@ -84,6 +84,42 @@ func (d *DB) Install(rec Record) error {
 	return err
 }
 
+// Get returns one installed filter by id.
+func (d *DB) Get(id string) (*Record, error) {
+	if id == "" {
+		return nil, fmt.Errorf("id is empty")
+	}
+	row := d.db.QueryRow(`
+		SELECT id, module, version, argv0, contract, binary_path, manifest_path, installed_at
+		FROM filters WHERE id = ?
+	`, id)
+	var rec Record
+	var ts int64
+	if err := row.Scan(&rec.ID, &rec.Module, &rec.Version, &rec.Argv0, &rec.Contract, &rec.BinaryPath, &rec.ManifestPath, &ts); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	rec.InstalledAt = time.Unix(ts, 0)
+	return &rec, nil
+}
+
+// Uninstall removes a filter by id.
+func (d *DB) Uninstall(id string) (*Record, error) {
+	rec, err := d.Get(id)
+	if err != nil {
+		return nil, err
+	}
+	if rec == nil {
+		return nil, fmt.Errorf("filter %q is not installed", id)
+	}
+	if _, err := d.db.Exec(`DELETE FROM filters WHERE id = ?`, id); err != nil {
+		return nil, err
+	}
+	return rec, nil
+}
+
 // Active returns the most recently installed filter for argv0.
 func (d *DB) Active(argv0 string) (*Record, error) {
 	row := d.db.QueryRow(`

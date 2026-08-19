@@ -203,6 +203,8 @@ Third-party filters are installed into gtkai’s filter registry; they do not re
 
 Done when: native `gtkai/gtkai-*` filters use the same registry; install/uninstall/list work; conflict and uninstall semantics above have tests; `hook-pre` resolves the active filter by shell command before rewrite.
 
+**Status (0.10.x):** registry, `filter install|uninstall|list`, conflict warnings, active resolution, and subprocess transport are implemented. `gtk-ai/gtkai-date` is the first external-only filter. Remaining built-ins migrate gradually (see ARCHITECTURE.md § Built-in migration).
+
 ---
 
 ## Current vs target
@@ -211,11 +213,11 @@ Done when: native `gtkai/gtkai-*` filters use the same registry; install/uninsta
 |---|---|---|
 | Agents | Claude Code plugin; Cursor / Codex hooks; OpenCode plugin | — |
 | Bash | `PreToolUse` rewrites registered commands to `gtkai …`; the binary runs and filters | Bash removed from `PostToolUse` (0.5.0) |
-| Filter identity | Flat `registry.Get("ls")` | Namespaced `author/gtkai-<command>`; active = most recent install |
+| Filter identity | Namespaced `author/gtkai-<command>`; active = most recent install; built-in fallback | Migrate remaining built-ins to external repos |
 | `Rewrite()` | Injects flags for `git status`, `git log`, `ls`, `grep`, `go test -json` | Runners (cargo, pytest, …); third-party filters via `filter install` |
 | `Read` / MCP | `PostToolUse` | `/* */` on Read; native `Grep`/`Glob` |
 | `gain` | Every proxy execution | Per-filter attribution by `id` |
-| Commands | find, ls, git, grep, rg, cat/head/tail, tree, go, cargo, pytest, npm/pnpm/npx test, docker ps/images/logs, Read, MCP | filter plugin registry (§4); native Grep/Glob |
+| Commands | find, ls, git, grep, rg, cat/head/tail, tree, go, cargo, pytest, npm/pnpm/npx test, docker ps/images/logs, date (external), Read, MCP | External repos for remaining commands; native Grep/Glob |
 
 Filtering stays heuristic. No semantic compression.
 
@@ -239,7 +241,7 @@ Filtering stays heuristic. No semantic compression.
 2. Corrections to current modules + `cat`/`head`/`tail`/`tree` + remaining git (section 2) — **done in 0.5.0**.
 3. Runners (section 3) — **done in 0.9.0** (go, cargo, pytest, npm, docker).
 4. Multi-agent hooks (Cursor, Codex, OpenCode) — **done in 0.10.0**.
-5. Filter plugin registry + install/uninstall/list + migrate natives to `gtkai/gtkai-*` (section 4).
+5. Filter plugin registry + install/uninstall/list + migrate natives to `gtkai/gtkai-*` (section 4) — **core done in 0.10.x**; per-command migration ongoing.
 6. Ecosystem commands as third-party filters according to `gain` (section 3 ecosystem).
 
 The git tag must match every version-bearing file (`cmd/gtkai/main.go`, plugin json, `mcpscan`, README).

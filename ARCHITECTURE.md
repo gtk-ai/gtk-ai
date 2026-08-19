@@ -290,9 +290,18 @@ The reference template repository for building a new filter is `gtk-ai/gtkai-dat
 
 Built-in filters (compiled into `gtkai`) remain active as fallback when no external filter is installed for a given argv0. Installing an external filter for the same command makes it active and shadows the built-in; uninstalling it restores the built-in.
 
+### Built-in migration
+
+Built-ins migrate to external repos gradually — one `gtk-ai/gtkai-<command>` repository at a time:
+
+1. Publish the external filter and add it to `filters/official.json`.
+2. `install.sh` installs it by default; the external filter shadows the built-in.
+3. Remove the built-in blank import from `cmd/gtkai/main.go` only when the command should require an external install (as with `date`).
+
+Until step 3, the built-in remains compiled in as fallback.
+
 ## Pending
 
-- §4 — filter registry with namespaced ids (`gtk-ai/gtkai-*`), `filter install/uninstall/list`, migrate built-ins.
+- Migrate remaining built-ins to external `gtk-ai/gtkai-*` repos (gradual; `date` done).
 - Native `Grep`/`Glob` filtering in PostToolUse.
 - `gain` per-filter attribution by `filter_id`.
-- `gtk-ai` GitHub organisation + per-filter repositories (marketplace prerequisite; not required for §4 core work).
