@@ -57,8 +57,8 @@ func TestInstallConflictAbortsWithoutReplace(t *testing.T) {
 
 	_, err = filterinstall.Install(filterinstall.Options{
 		Module:      "github.com/gtk-ai/date",
-		Version:     "v0.11.0",
-		CoreVersion: "0.10.0",
+		Version:     "v0.12.0",
+		CoreVersion: "0.11.0",
 	})
 	if err == nil {
 		t.Fatal("expected install to abort without --replace")
@@ -106,8 +106,8 @@ func TestInstallConflictWithReplace(t *testing.T) {
 	stderr := captureStderr(t, func() {
 		if _, err := filterinstall.Install(filterinstall.Options{
 			Module:      "github.com/gtk-ai/date",
-			Version:     "v0.11.0",
-			CoreVersion: "0.10.0",
+			Version:     "v0.12.0",
+			CoreVersion: "0.11.0",
 			Replace:     true,
 		}); err != nil {
 			t.Fatal(err)
@@ -143,8 +143,8 @@ func TestUninstallRemovesInstallDir(t *testing.T) {
 
 	rec, err := filterinstall.Install(filterinstall.Options{
 		Module:      "github.com/gtk-ai/date",
-		Version:     "v0.11.0",
-		CoreVersion: "0.10.0",
+		Version:     "v0.12.0",
+		CoreVersion: "0.11.0",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -203,8 +203,8 @@ func TestUninstallPromotesPreviousFilter(t *testing.T) {
 
 	newer, err := filterinstall.Install(filterinstall.Options{
 		Module:      "github.com/gtk-ai/date",
-		Version:     "v0.11.0",
-		CoreVersion: "0.10.0",
+		Version:     "v0.12.0",
+		CoreVersion: "0.11.0",
 		Replace:     true,
 	})
 	if err != nil {

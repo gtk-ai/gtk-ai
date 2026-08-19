@@ -158,7 +158,7 @@ Each filter declares, at minimum:
 | Field | Meaning |
 |---|---|
 | `id` | Full name `author/<cmd>` (must match the naming rule) |
-| `filters` | Shell command intercepted (argv0 basename), e.g. `ls` |
+| `command` | Shell command intercepted (argv0 basename), e.g. `ls` |
 
 Behavior matches today’s `Module`: `Rewrite`, `FilterOutput`, optional `ExtraEnv`. The core keeps ANSI strip, `never_worse`, and `gain`; filters do not bypass them.
 
@@ -168,7 +168,7 @@ A filter owns the full surface of that command or passes through: if it cannot h
 
 Many filters may target the same shell command. Only one is **active** at a time:
 
-- **Active filter** = the **most recently installed** among all filters whose `filters` field equals that command.
+- **Active filter** = the **most recently installed** among all filters whose `command` field equals that argv0.
 
 On **install**, when another filter already targets the same command:
 

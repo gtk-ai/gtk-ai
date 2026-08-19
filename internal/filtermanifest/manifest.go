@@ -18,8 +18,8 @@ func (m *Manifest) Validate(runningGtkai, platform string) error {
 	if !idRegex.MatchString(m.ID) {
 		return fmt.Errorf("id %q does not match naming rule", m.ID)
 	}
-	if len(m.Filters) == 0 {
-		return fmt.Errorf("filters must not be empty")
+	if strings.TrimSpace(m.Command) == "" {
+		return fmt.Errorf("command must not be empty")
 	}
 	if m.Contract != "subprocess/v1" {
 		return fmt.Errorf("contract must be subprocess/v1, got %q", m.Contract)
@@ -51,7 +51,7 @@ const ManifestFileName = "gtkai.json"
 // Manifest is the required gtkai.json schema for subprocess/v1 filters.
 type Manifest struct {
 	ID               string           `json:"id"`
-	Filters          []string         `json:"filters"`
+	Command          string           `json:"command"`
 	Platforms        []string         `json:"platforms"`
 	Contract         string           `json:"contract"`
 	GtkaiCoreVersion GtkaiCoreVersion `json:"gtkai-core-version"`

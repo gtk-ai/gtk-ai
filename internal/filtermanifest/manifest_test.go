@@ -85,8 +85,28 @@ func TestValidateGtkaiCoreVersionUnknownConstraint(t *testing.T) {
 	}
 }
 
+func TestValidateCommandEmpty(t *testing.T) {
+	m := &filtermanifest.Manifest{
+		ID:       "gtk-ai/date",
+		Command:  "",
+		Contract: "subprocess/v1",
+		GtkaiCoreVersion: filtermanifest.GtkaiCoreVersion{
+			Version:    "0.11.0",
+			Constraint: "min",
+		},
+		Platforms: []string{"linux/amd64"},
+	}
+	err := m.Validate("0.11.0", "linux/amd64")
+	if err == nil {
+		t.Fatal("expected error for empty command")
+	}
+	if !strings.Contains(err.Error(), "command must not be empty") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestParseGtkaiDateManifest(t *testing.T) {
-	dir, err := downloadModuleDir("github.com/gtk-ai/date@v0.11.0")
+	dir, err := downloadModuleDir("github.com/gtk-ai/date@v0.12.0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,10 +117,13 @@ func TestParseGtkaiDateManifest(t *testing.T) {
 	if m.ID != "gtk-ai/date" {
 		t.Fatalf("id %q", m.ID)
 	}
+	if m.Command != "date" {
+		t.Fatalf("command %q", m.Command)
+	}
 	if m.GtkaiCoreVersion.Constraint != "min" {
 		t.Fatalf("constraint %q", m.GtkaiCoreVersion.Constraint)
 	}
-	if err := m.ValidateGtkaiCoreVersion("0.10.0"); err != nil {
+	if err := m.ValidateGtkaiCoreVersion("0.11.0"); err != nil {
 		t.Fatal(err)
 	}
 }
