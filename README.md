@@ -118,9 +118,9 @@ Some commands use **external filters** — standalone repos installed separately
 ### External filter commands
 
 ```bash
-gtkai filter install github.com/gtk-ai/date@v0.11.0
-gtkai filter install github.com/gtk-ai/date@v0.11.0 --replace
-gtkai filter install-official filters/official.json --core-version=0.11.0-beta.1
+gtkai filter install github.com/gtk-ai/date@v0.12.0
+gtkai filter install github.com/gtk-ai/date@v0.12.0 --replace
+gtkai filter install-official filters/official.json --core-version=0.11.0
 gtkai filter list
 gtkai filter uninstall gtk-ai/date
 ```

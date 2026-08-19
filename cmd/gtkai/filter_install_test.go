@@ -39,7 +39,7 @@ func TestFilterInstallOfficialAndProxyDate(t *testing.T) {
 
 	root := moduleRoot(t)
 	official := filepath.Join(root, "filters/official.json")
-	if _, err := filterinstall.InstallOfficial(official, "0.11.0-beta.1", ""); err != nil {
+	if _, err := filterinstall.InstallOfficial(official, "0.11.0", ""); err != nil {
 		t.Fatal(err)
 	}
 
