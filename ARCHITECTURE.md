@@ -217,8 +217,8 @@ Every filter binary ships a `filter.json` at the root of its repository:
   "platforms": ["linux/amd64", "darwin/arm64"],
   "contract": "subprocess/v1",
   "gtkai-core-version": {
-    "semver": "0.10.0",
-    "require": "min"
+    "version": "0.10.0",
+    "constraint": "min"
   }
 }
 ```
@@ -227,12 +227,29 @@ Required fields: `id`, `filters`, `platforms`, `contract`, `gtkai-core-version`.
 
 - `id` must match `^[a-z0-9_-]+/gtkai-[a-z0-9_-]+$`.
 - `contract` must be `subprocess/v1`.
-- `gtkai-core-version.semver` must be valid semver.
-- `gtkai-core-version.require` must be `"min"` or `"exact"`:
-  - `"min"` — running `gtkai` must be `>= semver`.
-  - `"exact"` — running `gtkai` must match `semver` exactly.
+- `gtkai-core-version.version` must be valid semver.
+- `gtkai-core-version.constraint` must be `"min"` or `"exact"`:
+  - `"min"` — running `gtkai` must be `>= version`.
+  - `"exact"` — running `gtkai` must match `version` exactly.
 
 **Filter version is not in the manifest.** It is resolved from the install ref — the git tag of the filter repository. Example: `gtkai filter install gtk-ai/gtkai-date@v0.10.0` installs tag `v0.10.0`; the core records that version in the registry at install time.
+
+On install, the core validates `gtkai-core-version` against the running binary:
+
+```go
+switch manifest.GtkaiCoreVersion.Constraint {
+case "min":
+    if semver.Compare(runningGtkai, manifest.GtkaiCoreVersion.Version) < 0 {
+        return fmt.Errorf("gtkai %s < required min %s", runningGtkai, manifest.GtkaiCoreVersion.Version)
+    }
+case "exact":
+    if runningGtkai != manifest.GtkaiCoreVersion.Version {
+        return fmt.Errorf("gtkai %s != required exact %s", runningGtkai, manifest.GtkaiCoreVersion.Version)
+    }
+default:
+    return fmt.Errorf("unknown constraint %q", manifest.GtkaiCoreVersion.Constraint)
+}
+```
 
 ### Validation on install
 
@@ -240,7 +257,7 @@ Required fields: `id`, `filters`, `platforms`, `contract`, `gtkai-core-version`.
 
 1. `filter.json` is present and parses without error.
 2. `id` matches the naming rule regex.
-3. `gtkai-core-version.semver` is valid semver; running `gtkai` satisfies the `require` constraint.
+3. `gtkai-core-version.version` is valid semver; running `gtkai` satisfies the `constraint` (see switch above).
 4. `contract` is `subprocess/v1`.
 5. Running platform appears in `platforms`.
 6. Liveness check: spawn the binary with `{"operation":"rewrite","args":[],"output":"","exit_code":0}` and expect a valid response within 500 ms.

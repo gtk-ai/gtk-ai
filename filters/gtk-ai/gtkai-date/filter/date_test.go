@@ -1,13 +1,12 @@
 package filter_test
 
 import (
-	"encoding/json"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/jmeiracorbal/gtk-ai/filters/gtk-ai/gtkai-date/filter"
+	"github.com/jmeiracorbal/gtk-ai/internal/filtermanifest"
 )
 
 // --- Rewrite ---
@@ -79,23 +78,9 @@ func TestID(t *testing.T) {
 // --- filter.json manifest ---
 
 func TestManifest(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join("..", "filter.json"))
+	m, err := filtermanifest.ParseFile(filepath.Join("..", "filter.json"))
 	if err != nil {
-		t.Fatalf("read filter.json: %v", err)
-	}
-
-	var m struct {
-		ID              string   `json:"id"`
-		Filters         []string `json:"filters"`
-		Platforms       []string `json:"platforms"`
-		Contract        string   `json:"contract"`
-		GtkaiCoreVersion struct {
-			Semver  string `json:"semver"`
-			Require string `json:"require"`
-		} `json:"gtkai-core-version"`
-	}
-	if err := json.Unmarshal(data, &m); err != nil {
-		t.Fatalf("parse filter.json: %v", err)
+		t.Fatal(err)
 	}
 	if m.ID != filter.ID {
 		t.Fatalf("manifest id %q != code id %q", m.ID, filter.ID)
@@ -106,15 +91,18 @@ func TestManifest(t *testing.T) {
 	if m.Contract != "subprocess/v1" {
 		t.Fatalf("unexpected contract: %q", m.Contract)
 	}
-	if m.GtkaiCoreVersion.Semver == "" {
-		t.Fatal("gtkai-core-version.semver must not be empty")
+	if m.GtkaiCoreVersion.Version == "" {
+		t.Fatal("gtkai-core-version.version must not be empty")
 	}
-	switch m.GtkaiCoreVersion.Require {
+	switch m.GtkaiCoreVersion.Constraint {
 	case "min", "exact":
 	default:
-		t.Fatalf("gtkai-core-version.require must be min or exact, got %q", m.GtkaiCoreVersion.Require)
+		t.Fatalf("gtkai-core-version.constraint must be min or exact, got %q", m.GtkaiCoreVersion.Constraint)
 	}
 	if len(m.Platforms) == 0 {
 		t.Fatal("platforms must not be empty")
+	}
+	if err := m.ValidateGtkaiCoreVersion("0.10.0"); err != nil {
+		t.Fatalf("running gtkai 0.10.0 must satisfy manifest: %v", err)
 	}
 }
