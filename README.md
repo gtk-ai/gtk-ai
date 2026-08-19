@@ -70,6 +70,10 @@ claude plugin install -s user gtk-ai@gtk-ai
 
 Then restart the agent.
 
+The install script also runs `gtkai filter install-official` for the filters listed in `filters/official.json` (currently `gtk-ai/gtkai-date`).
+
+Then restart the agent.
+
 ### Option B: build from source
 
 Requires Go 1.22+.
@@ -110,6 +114,30 @@ Each module handles one command. All built-in modules ship with the binary.
 | `cat` / `head` / `tail` | same | Reuses `read.FilterContent` on single-file output |
 | `tree` | `tree` | Entry count + capped listing |
 | `gain` | — | SQLite analytics: recorded on each proxy run |
+
+Some commands use **external filters** — standalone repos installed separately (for example `github.com/gtk-ai/gtkai-date`). `install.sh` installs the official list from `filters/official.json`. Built-in modules remain as fallback until migrated.
+
+### External filter commands
+
+```bash
+gtkai filter install github.com/gtk-ai/gtkai-date@v0.10.1
+gtkai filter install github.com/gtk-ai/gtkai-date@v0.10.1 --replace
+gtkai filter install-official filters/official.json --core-version=0.10.0
+gtkai filter list
+gtkai filter uninstall gtk-ai/gtkai-date
+```
+
+| Command | Description |
+|---|---|
+| `filter install <module@version>` | Download, validate `gtkai.json`, build, register in `~/.gtk-ai/filters.db` |
+| `filter install … --replace` | Required when another filter is already **active** for the same shell command |
+| `filter install-official <file>` | Install every entry in `filters/official.json` (`install.sh` uses this; `--replace` is implicit) |
+| `filter list` | List installed filters; marks the active one per command |
+| `filter uninstall <id>` | Remove by full id (e.g. `gtk-ai/gtkai-date`); deletes `~/.gtk-ai/filters/<id>/` |
+
+**Conflict policy:** if filter `acme/gtkai-date` is active for `date`, installing `gtk-ai/gtkai-date` aborts unless you pass `--replace`. With `--replace`, the new filter becomes active; the previous one stays installed but inactive (not deleted). To remove it: `filter uninstall acme/gtkai-date`. To switch back: reinstall the other filter with `--replace`.
+
+Same filter id, new version: upgrade without `--replace`. Uninstalling the active filter promotes the most recently installed survivor for that command, or falls back to the built-in module when one exists.
 
 ## Adding a module
 
@@ -165,6 +193,10 @@ gtkai json-merge <file>          Deep-merge JSON from stdin into an agent config
 gtkai git status                 Proxy: run a registered command through gtkai
 gtkai mcp-scan                   List MCP server tools, suggest passthrough prefixes
 gtkai gain                       Token savings analytics
+gtkai filter install <mod@ver> [--replace]  Install an external filter module
+gtkai filter install-official <file> --core-version=<ver>  Install official filters
+gtkai filter uninstall <id>      Remove an installed filter by full id
+gtkai filter list                List installed filters (active marked)
 gtkai version                    Print version
 ```
 
