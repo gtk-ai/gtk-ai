@@ -516,35 +516,35 @@ case "$AGENT" in
     ;;
 esac
 
-install_official_filters() {
-  if [ "${GTKAI_SKIP_FILTERS:-}" = "1" ]; then
-    warn "Skipping official filter install (GTKAI_SKIP_FILTERS=1)"
+install_marketplace() {
+  if [ "${GTKAI_SKIP_MARKETPLACE:-}" = "1" ] || [ "${GTKAI_SKIP_FILTERS:-}" = "1" ]; then
+    warn "Skipping marketplace install (GTKAI_SKIP_MARKETPLACE=1)"
     return
   fi
 
-  header "Installing official filters"
+  header "Installing marketplace entries"
 
-  OFFICIAL_JSON=""
-  if [ -f "$(dirname "$0")/filters/official.json" ]; then
-    OFFICIAL_JSON="$(cd "$(dirname "$0")" && pwd)/filters/official.json"
-  elif [ -n "$TMP_DIR" ] && [ -f "$TMP_DIR/gtk-ai/filters/official.json" ]; then
-    OFFICIAL_JSON="$TMP_DIR/gtk-ai/filters/official.json"
+  MARKETPLACE_JSON=""
+  if [ -f "$(dirname "$0")/marketplace.json" ]; then
+    MARKETPLACE_JSON="$(cd "$(dirname "$0")" && pwd)/marketplace.json"
+  elif [ -n "$TMP_DIR" ] && [ -f "$TMP_DIR/gtk-ai/marketplace.json" ]; then
+    MARKETPLACE_JSON="$TMP_DIR/gtk-ai/marketplace.json"
   else
-    warn "official filters manifest not found — skipping filter install"
+    warn "marketplace.json not found — skipping marketplace install"
     return
   fi
 
-  INSTALL_OFFICIAL_ARGS="--core-version=$INSTALLED_VERSION"
+  INSTALL_MARKETPLACE_ARGS="--core-version=$INSTALLED_VERSION"
 
-  if "$GTKAI_BIN" filter install-official "$OFFICIAL_JSON" $INSTALL_OFFICIAL_ARGS; then
-    success "Official filters installed"
+  if "$GTKAI_BIN" filter install-marketplace "$MARKETPLACE_JSON" $INSTALL_MARKETPLACE_ARGS; then
+    success "Marketplace entries installed"
   else
-    error "Official filter installation failed"
+    error "Marketplace installation failed"
   fi
 }
 
 warn_rtk
-install_official_filters
+install_marketplace
 rm -rf "$TMP_DIR"
 
 header "Done"

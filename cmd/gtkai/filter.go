@@ -17,8 +17,8 @@ func runFilter(args []string) {
 	switch args[0] {
 	case "install":
 		runFilterInstall(args[1:])
-	case "install-official":
-		runFilterInstallOfficial(args[1:])
+	case "install-marketplace":
+		runFilterInstallMarketplace(args[1:])
 	case "uninstall":
 		runFilterUninstall(args[1:])
 	case "list":
@@ -31,7 +31,7 @@ func runFilter(args []string) {
 }
 
 func printFilterUsage() {
-	fmt.Fprintln(os.Stderr, "usage: gtkai filter install <module@version> [--replace] | install-official <official.json> | uninstall <id> | list")
+	fmt.Fprintln(os.Stderr, "usage: gtkai filter install <module@version> [--replace] | install-marketplace <marketplace.json> | uninstall <id> | list")
 }
 
 func runFilterInstall(args []string) {
@@ -75,14 +75,14 @@ func runFilterInstall(args []string) {
 	fmt.Printf("installed %s@%s -> %s (%s)\n", rec.Module, rec.Version, rec.ID, rec.BinaryPath)
 }
 
-func runFilterInstallOfficial(args []string) {
-	var officialPath string
+func runFilterInstallMarketplace(args []string) {
+	var marketplacePath string
 	var coreVersion string
 	for i := 0; i < len(args); i++ {
 		switch {
 		case args[i] == "--core-version":
 			if i+1 >= len(args) {
-				fmt.Fprintln(os.Stderr, "gtkai filter install-official: --core-version requires a value")
+				fmt.Fprintln(os.Stderr, "gtkai filter install-marketplace: --core-version requires a value")
 				os.Exit(1)
 			}
 			coreVersion = args[i+1]
@@ -90,27 +90,27 @@ func runFilterInstallOfficial(args []string) {
 		case strings.HasPrefix(args[i], "--core-version="):
 			coreVersion = strings.TrimPrefix(args[i], "--core-version=")
 		case strings.HasPrefix(args[i], "-"):
-			fmt.Fprintf(os.Stderr, "gtkai filter install-official: unknown flag %q\n", args[i])
+			fmt.Fprintf(os.Stderr, "gtkai filter install-marketplace: unknown flag %q\n", args[i])
 			os.Exit(1)
 		default:
-			if officialPath != "" {
-				fmt.Fprintln(os.Stderr, "gtkai filter install-official: too many arguments")
+			if marketplacePath != "" {
+				fmt.Fprintln(os.Stderr, "gtkai filter install-marketplace: too many arguments")
 				os.Exit(1)
 			}
-			officialPath = args[i]
+			marketplacePath = args[i]
 		}
 	}
-	if officialPath == "" {
-		fmt.Fprintln(os.Stderr, "usage: gtkai filter install-official <official.json> --core-version=<ver>")
+	if marketplacePath == "" {
+		fmt.Fprintln(os.Stderr, "usage: gtkai filter install-marketplace <marketplace.json> --core-version=<ver>")
 		os.Exit(1)
 	}
 	if coreVersion == "" {
-		fmt.Fprintln(os.Stderr, "gtkai filter install-official: --core-version is required")
+		fmt.Fprintln(os.Stderr, "gtkai filter install-marketplace: --core-version is required")
 		os.Exit(1)
 	}
-	installed, err := filterinstall.InstallOfficial(officialPath, coreVersion, releaseRepo())
+	installed, err := filterinstall.InstallMarketplace(marketplacePath, coreVersion, releaseRepo())
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "gtkai filter install-official: %v\n", err)
+		fmt.Fprintf(os.Stderr, "gtkai filter install-marketplace: %v\n", err)
 		os.Exit(1)
 	}
 	for _, rec := range installed {

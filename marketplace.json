@@ -1,5 +1,6 @@
 {
-  "filters": [
+  "name": "gtk-ai",
+  "entries": [
     {
       "module": "github.com/gtk-ai/date",
       "version": "v0.12.0"

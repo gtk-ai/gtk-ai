@@ -161,12 +161,12 @@ func TestIntegrationLs(t *testing.T) {
 	}
 }
 
-// installOfficialFilters installs filters from filters/official.json into HOME.
-func installOfficialFilters(t *testing.T) string {
+// installMarketplaceFilters installs entries from marketplace.json into HOME.
+func installMarketplaceFilters(t *testing.T) string {
 	t.Helper()
 	home := testhome.Isolated(t)
-	official := filepath.Join(moduleRoot(t), "filters/official.json")
-	if _, err := filterinstall.InstallOfficial(official, "0.11.0-beta.2", ""); err != nil {
+	catalog := filepath.Join(moduleRoot(t), "marketplace.json")
+	if _, err := filterinstall.InstallMarketplace(catalog, "0.11.0-beta.2", ""); err != nil {
 		t.Fatal(err)
 	}
 	return home
@@ -181,7 +181,7 @@ func TestIntegrationDateWithoutFilter(t *testing.T) {
 }
 
 func TestIntegrationDate(t *testing.T) {
-	home := installOfficialFilters(t)
+	home := installMarketplaceFilters(t)
 	bin := buildBinary(t)
 	dir := t.TempDir()
 
@@ -201,7 +201,7 @@ func TestIntegrationDate(t *testing.T) {
 }
 
 func TestIntegrationDateWithFormat(t *testing.T) {
-	home := installOfficialFilters(t)
+	home := installMarketplaceFilters(t)
 	bin := buildBinary(t)
 	dir := t.TempDir()
 
@@ -241,7 +241,7 @@ func TestIntegrationVersion(t *testing.T) {
 // para el comando date: el binario compilado lee un payload JSON y produce
 // el JSON de reescritura correcto.
 func TestIntegrationHookPreDate(t *testing.T) {
-	home := installOfficialFilters(t)
+	home := installMarketplaceFilters(t)
 	bin := buildBinary(t)
 	payload := `{"tool_name":"Bash","tool_input":{"command":"date"}}`
 

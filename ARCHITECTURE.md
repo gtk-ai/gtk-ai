@@ -89,7 +89,7 @@ Many filters may declare the same `command` value. Only one is **active** at a t
 
 - **Active** = most recently installed among all filters whose `command` equals that argv0.
 - On `filter install`, if another filter already targets the same command, abort unless `--replace` is passed. With `--replace`, the new filter becomes active; the previous one stays installed but inactive.
-- `filter install-official` (used by `install.sh`) passes `--replace` implicitly for official filters.
+- `filter install-marketplace` (used by `install.sh`) passes `--replace` implicitly.
 - On `filter uninstall gtk-ai/ls` (full id required):
   - No filters remain for that command → pass through (no rewrite).
   - Other filters remain → active = most recent among survivors.
@@ -289,9 +289,23 @@ Installed filters are recorded in `~/.gtk-ai/filters.db` (SQLite). The path is r
 
 Binaries are downloaded from the GitHub Releases page of the filter repository and stored under the namespaced path.
 
-### Official filters and install.sh
+### Marketplace and install.sh
 
-`install.sh` downloads the official `gtk-ai/*` filters by default alongside the core binary.
+`marketplace.json` at the repository root is the single catalog of installable gtk-ai extensions. `install.sh` runs `gtkai filter install-marketplace marketplace.json` by default (`--replace` implicit).
+
+```json
+{
+  "name": "gtk-ai",
+  "entries": [
+    {
+      "module": "github.com/gtk-ai/date",
+      "version": "v0.12.0"
+    }
+  ]
+}
+```
+
+Each entry is installed via `filter install` semantics (download, validate `gtkai.json`, register in `~/.gtk-ai/filters.db`). New filters are added here — no separate official filter list.
 
 The reference template repository for building a new filter is [gtk-ai/date](https://github.com/gtk-ai/date) ([HOWTO.md](https://github.com/gtk-ai/date/blob/main/HOWTO.md)).
 
@@ -303,13 +317,13 @@ Built-in filters (compiled into `gtkai`) remain active as fallback when no exter
 
 Built-ins migrate to external repos gradually — one `gtk-ai/<cmd>` repository at a time:
 
-1. Publish the external filter and add it to `filters/official.json`.
+1. Publish the filter repo and add an entry to `marketplace.json`.
 2. `install.sh` installs it by default; the external filter shadows the built-in.
 3. Remove the built-in blank import from `cmd/gtkai/main.go` only when the command should require an external install (as with `date`).
 
 Until step 3, the built-in remains compiled in as fallback.
 
-Official filter repos follow `gtk-ai/<cmd>` (Go module `github.com/gtk-ai/<cmd>`, filter id `gtk-ai/<cmd>`).
+Filter repos follow `gtk-ai/<cmd>` (Go module `github.com/gtk-ai/<cmd>`, filter id `gtk-ai/<cmd>`).
 
 ## Pending
 
