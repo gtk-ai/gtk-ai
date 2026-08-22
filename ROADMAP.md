@@ -1,6 +1,6 @@
 # Roadmap: gtk-ai vs rtk 0.42.4
 
-Compared against [rtk-ai/rtk](https://github.com/rtk-ai/rtk) `0.42.4` (`ba7a9ce`). gtk-ai is at `0.10.0`.
+Compared against [rtk-ai/rtk](https://github.com/rtk-ai/rtk) `0.42.4` (`ba7a9ce`). gtk-ai is at `0.11.0-beta.2`.
 
 **Product decision (2026-08-17):** gtk follows the same path as rtk. It rewrites the command **before** execution (`PreToolUse` → `git status` becomes `gtkai git status`). gtkai runs the real binary, injects flags, and filters the output. Post-filtering remains only for Claude Code native tools that do not go through Bash (`Read`, MCP, `Grep`, `Glob`).
 
@@ -204,21 +204,95 @@ Third-party filters are installed into gtkai’s filter registry; they do not re
 
 Done when: native `gtk-ai/*` filters use the same registry; install/uninstall/list work; conflict and uninstall semantics above have tests; `hook-pre` resolves the active filter by shell command before rewrite.
 
-**Status (0.11.x beta):** registry, `filter install|uninstall|list`, conflict/`--replace` semantics, active resolution, and subprocess transport are implemented. [gtk-ai/date](https://github.com/gtk-ai/date) is the first external-only filter and the reference template (`gtk-ai/<cmd>`). Remaining built-ins migrate gradually (see ARCHITECTURE.md § Built-in migration).
+**Status (0.11.x beta):** registry, `filter install|uninstall|list`, conflict/`--replace` semantics, active resolution, and subprocess transport are implemented. [gtk-ai/date](https://github.com/gtk-ai/date) is the first external-only filter and the reference template (`gtk-ai/<cmd>`). Remaining built-ins migrate gradually (see below and ARCHITECTURE.md § Built-in migration).
+
+### Built-in migration roadmap
+
+Each row is one external repository. One repo per shell argv0 (or a small group when they share the same implementation). Template: [gtk-ai/date](https://github.com/gtk-ai/date) + [HOWTO.md](https://github.com/gtk-ai/date/blob/main/HOWTO.md).
+
+**Per-filter steps:**
+
+1. Publish `github.com/gtk-ai/<cmd>` with `gtkai.json` (`command`, `subprocess/v1`, semver constraint).
+2. Add entry to `filters/official.json`; `install.sh` installs it by default.
+3. External filter shadows the built-in (active = most recent install).
+4. Remove the blank import from `cmd/gtkai/main.go` only when the command should require an external install (as with `date`).
+
+Until step 4, the built-in stays compiled in as fallback.
+
+#### Done
+
+| Repo | `command` | Built-in removed | Notes |
+|---|---|---|---|
+| [gtk-ai/date](https://github.com/gtk-ai/date) | `date` | yes | Reference template; `official.json` → `v0.12.0`; manifest uses `command` field |
+
+#### Pending — high priority
+
+Frequent in agent sessions; mature built-in logic; good next targets after `date`.
+
+| Repo | `command` | Built-in module | Notes |
+|---|---|---|---|
+| `gtk-ai/ls` | `ls` | `modules/ls` | Very frequent; `-l` + grouping + noise dirs |
+| `gtk-ai/grep` | `grep` | `modules/grep` | High volume; injects `-nH`; grouping shared with `rg` |
+| `gtk-ai/find` | `find` | `modules/find` | High savings (~64% in bench); group by directory |
+| `gtk-ai/git` | `git` | `modules/git` | Largest module: status, log, diff, branch, show, push/pull/fetch/stash |
+
+**Recommended order for this tier:** `ls` → `grep` → `find` → `git` (leave `git` last within the tier — most subcommands and edge cases).
+
+#### Pending — medium priority
+
+Runners and tooling; logic is stable but less universal than core shell commands.
+
+| Repo | `command` | Built-in module | Notes |
+|---|---|---|---|
+| `gtk-ai/go` | `go` | `modules/go` | `test -json`, `build`, `vet` |
+| `gtk-ai/cargo` | `cargo` | `modules/cargo` | test/build/clippy/check; collapse `Compiling` |
+| `gtk-ai/pytest` | `pytest` | `modules/pytest` | failures + short traceback |
+| `gtk-ai/npm` | `npm` | `modules/npmtest` | test runners; strip ANSI |
+| `gtk-ai/pnpm` | `pnpm` | `modules/npmtest` | same filter family as `npm` |
+| `gtk-ai/npx` | `npx` | `modules/npmtest` | vitest/jest via npx |
+| `gtk-ai/docker` | `docker` | `modules/docker` | read-only: `ps`, `images`, `logs`, `compose ps/logs` |
+
+`python` / `python3` delegate to pytest when `-m pytest`; migrate with `gtk-ai/pytest` or a dedicated `gtk-ai/python` if the argv0 must be intercepted separately.
+
+#### Pending — low priority
+
+| Repo | `command` | Built-in module | Notes |
+|---|---|---|---|
+| `gtk-ai/rg` | `rg` | `modules/rg` | Grouping shared with `grep`; pipeline last-stage rewrite |
+| `gtk-ai/tree` | `tree` | `modules/tree` | entry count + capped listing |
+| `gtk-ai/cat` | `cat`, `head`, `tail` | `modules/readcmd` | one repo, three `command` values or three repos; reuses `read.FilterContent` |
+
+#### Not built-in migration
+
+These stay in the core or are separate tracks — do not confuse with `gtk-ai/*` shell filters:
+
+| Track | Item | Where |
+|---|---|---|
+| PostToolUse | native `Grep`, `Glob` | `hook-post`; agents do not run them through Bash |
+| PostToolUse | `Read`, MCP | already filtered |
+| Core | `gain` per `filter_id` | attribution by installed filter id |
+| Ecosystem (§3) | `ruff`, `tsc`, `eslint`/`biome`, `golangci-lint`, `gh`, `kubectl`, `curl` JSON | third-party filters **only if `gain` justifies it** |
+| Out of scope | rtk TOML (`helm`, `pulumi`, `terraform`, `dotnet`, `gradle`, `phpunit`, …) | not planned until typical session is covered |
+
+#### Summary
+
+- **Migrated:** 1 (`date`)
+- **Pending repos:** 12–15 (17 argv0 counting `cat`/`head`/`tail` and `npm`/`pnpm`/`npx` separately)
+- **Next filter to add:** `gtk-ai/ls`
 
 ---
 
 ## Current vs target
 
-| | gtk-ai 0.10.0 | Remaining |
+| | gtk-ai 0.11.x beta | Remaining |
 |---|---|---|
 | Agents | Claude Code plugin; Cursor / Codex hooks; OpenCode plugin | — |
-| Bash | `PreToolUse` rewrites registered commands to `gtkai …`; the binary runs and filters | Bash removed from `PostToolUse` (0.5.0) |
-| Filter identity | Namespaced `author/<cmd>`; active = most recent install; built-in fallback | Migrate remaining built-ins to external repos |
-| `Rewrite()` | Injects flags for `git status`, `git log`, `ls`, `grep`, `go test -json` | Runners (cargo, pytest, …); third-party filters via `filter install` |
-| `Read` / MCP | `PostToolUse` | `/* */` on Read; native `Grep`/`Glob` |
+| Bash | `PreToolUse` rewrites registered commands to `gtkai …`; the binary runs and filters | — |
+| Filter identity | Namespaced `author/<cmd>`; active = most recent install; built-in fallback | Migrate remaining built-ins (see §4 migration roadmap) |
+| `Rewrite()` | Injects flags for `git status`, `git log`, `ls`, `grep`, `go test -json`, … | External `gtk-ai/*` repos per command |
+| `Read` / MCP | `PostToolUse` | native `Grep`/`Glob` |
 | `gain` | Every proxy execution | Per-filter attribution by `id` |
-| Commands | find, ls, git, grep, rg, cat/head/tail, tree, go, cargo, pytest, npm/pnpm/npx test, docker ps/images/logs, date (external), Read, MCP | External repos for remaining commands; native Grep/Glob |
+| Commands | Built-ins: find, ls, git, grep, rg, cat/head/tail, tree, go, cargo, pytest, npm/pnpm/npx, docker; external: date | 12–15 external repos (§4 migration roadmap); native Grep/Glob |
 
 Filtering stays heuristic. No semantic compression.
 
@@ -242,7 +316,7 @@ Filtering stays heuristic. No semantic compression.
 2. Corrections to current modules + `cat`/`head`/`tail`/`tree` + remaining git (section 2) — **done in 0.5.0**.
 3. Runners (section 3) — **done in 0.9.0** (go, cargo, pytest, npm, docker).
 4. Multi-agent hooks (Cursor, Codex, OpenCode) — **done in 0.10.0**.
-5. Filter plugin registry + install/uninstall/list + migrate natives to `gtk-ai/*` (section 4) — **core done in 0.11.x beta**; per-command migration ongoing.
+5. Filter plugin registry + install/uninstall/list + migrate natives to `gtk-ai/*` (section 4) — **core done in 0.11.x beta**; per-command migration ongoing (see §4 **Built-in migration roadmap**; next: `gtk-ai/ls`).
 6. Ecosystem commands as third-party filters according to `gain` (section 3 ecosystem).
 
 The git tag must match every version-bearing file (`cmd/gtkai/main.go`, plugin json, `mcpscan`, README).
