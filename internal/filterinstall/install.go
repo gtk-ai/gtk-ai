@@ -286,56 +286,57 @@ func copyFile(src, dst string, mode os.FileMode) error {
 	return out.Close()
 }
 
-// OfficialFilter is one entry in filters/official.json.
-type OfficialFilter struct {
+// MarketplaceEntry is one installable item in marketplace.json.
+type MarketplaceEntry struct {
 	Module  string `json:"module"`
 	Version string `json:"version"`
 }
 
-// OfficialFilters is the list of filters install.sh installs by default.
-type OfficialFilters struct {
-	Filters []OfficialFilter `json:"filters"`
+// Marketplace is the gtk-ai marketplace catalog (marketplace.json).
+type Marketplace struct {
+	Name    string             `json:"name"`
+	Entries []MarketplaceEntry `json:"entries"`
 }
 
-// LoadOfficial reads filters/official.json from path.
-func LoadOfficial(path string) (OfficialFilters, error) {
+// LoadMarketplace reads marketplace.json from path.
+func LoadMarketplace(path string) (Marketplace, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return OfficialFilters{}, err
+		return Marketplace{}, err
 	}
-	var o OfficialFilters
-	if err := json.Unmarshal(data, &o); err != nil {
-		return OfficialFilters{}, err
+	var m Marketplace
+	if err := json.Unmarshal(data, &m); err != nil {
+		return Marketplace{}, err
 	}
-	if len(o.Filters) == 0 {
-		return OfficialFilters{}, fmt.Errorf("no filters listed in %s", path)
+	if len(m.Entries) == 0 {
+		return Marketplace{}, fmt.Errorf("no entries listed in %s", path)
 	}
-	for _, f := range o.Filters {
-		if f.Module == "" || f.Version == "" {
-			return OfficialFilters{}, fmt.Errorf("module and version are required in official filters")
+	for _, e := range m.Entries {
+		if e.Module == "" || e.Version == "" {
+			return Marketplace{}, fmt.Errorf("module and version are required in marketplace entries")
 		}
 	}
-	return o, nil
+	return m, nil
 }
 
-// InstallOfficial installs every filter listed in official.json.
-func InstallOfficial(officialPath, coreVersion, releaseRepo string) ([]filterregistry.Record, error) {
-	official, err := LoadOfficial(officialPath)
+// InstallMarketplace installs every entry listed in marketplace.json.
+func InstallMarketplace(marketplacePath, coreVersion, releaseRepo string) ([]filterregistry.Record, error) {
+	catalog, err := LoadMarketplace(marketplacePath)
 	if err != nil {
 		return nil, err
 	}
 	var installed []filterregistry.Record
-	for _, f := range official.Filters {
+	for _, e := range catalog.Entries {
 		opts := Options{
-			Module:      f.Module,
-			Version:     f.Version,
+			Module:      e.Module,
+			Version:     e.Version,
 			CoreVersion: coreVersion,
 			ReleaseRepo: releaseRepo,
 			Replace:     true,
 		}
 		rec, err := Install(opts)
 		if err != nil {
-			return installed, fmt.Errorf("install %s@%s: %w", f.Module, f.Version, err)
+			return installed, fmt.Errorf("install %s@%s: %w", e.Module, e.Version, err)
 		}
 		installed = append(installed, *rec)
 	}

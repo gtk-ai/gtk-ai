@@ -34,12 +34,12 @@ func captureProxyStdout(t *testing.T, fn func() int) string {
 	return buf.String()
 }
 
-func TestFilterInstallOfficialAndProxyDate(t *testing.T) {
+func TestFilterInstallMarketplaceAndProxyDate(t *testing.T) {
 	testhome.Isolated(t)
 
 	root := moduleRoot(t)
-	official := filepath.Join(root, "filters/official.json")
-	if _, err := filterinstall.InstallOfficial(official, "0.11.0-beta.2", ""); err != nil {
+	catalog := filepath.Join(root, "marketplace.json")
+	if _, err := filterinstall.InstallMarketplace(catalog, "0.11.0-beta.2", ""); err != nil {
 		t.Fatal(err)
 	}
 

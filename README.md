@@ -68,7 +68,7 @@ Claude Code still needs the plugin after the marketplace is registered:
 claude plugin install -s user gtk-ai@gtk-ai
 ```
 
-The install script also runs `gtkai filter install-official` for the filters listed in `filters/official.json` (currently `gtk-ai/date`).
+The install script also runs `gtkai filter install-marketplace` for the entries listed in `marketplace.json` (currently `gtk-ai/date`).
 
 Then restart the agent.
 
@@ -113,14 +113,14 @@ Each module handles one command. All built-in modules ship with the binary.
 | `tree` | `tree` | Entry count + capped listing |
 | `gain` | — | SQLite analytics: recorded on each proxy run |
 
-Some commands use **external filters** — standalone repos installed separately (for example `github.com/gtk-ai/date`). `install.sh` installs the official list from `filters/official.json`. Built-in modules remain as fallback until migrated.
+Command filters ship as standalone repos (for example `github.com/gtk-ai/date`). `install.sh` installs every entry in `marketplace.json`. Built-in modules remain as fallback until migrated.
 
 ### External filter commands
 
 ```bash
 gtkai filter install github.com/gtk-ai/date@v0.12.0
 gtkai filter install github.com/gtk-ai/date@v0.12.0 --replace
-gtkai filter install-official filters/official.json --core-version=0.11.0-beta.2
+gtkai filter install-marketplace marketplace.json --core-version=0.11.0-beta.2
 gtkai filter list
 gtkai filter uninstall gtk-ai/date
 ```
@@ -129,7 +129,7 @@ gtkai filter uninstall gtk-ai/date
 |---|---|
 | `filter install <module@version>` | Download, validate `gtkai.json`, build, register in `~/.gtk-ai/filters.db` |
 | `filter install … --replace` | Required when another filter is already **active** for the same shell command |
-| `filter install-official <file>` | Install every entry in `filters/official.json` (`install.sh` uses this; `--replace` is implicit) |
+| `filter install-marketplace <file>` | Install every entry in `marketplace.json` (`install.sh` uses this; `--replace` is implicit) |
 | `filter list` | List installed filters; marks the active one per command |
 | `filter uninstall <id>` | Remove by full id (e.g. `gtk-ai/date`); deletes `~/.gtk-ai/filters/<id>/` |
 
@@ -196,7 +196,7 @@ gtkai git status                 Proxy: run a registered command through gtkai
 gtkai mcp-scan                   List MCP server tools, suggest passthrough prefixes
 gtkai gain                       Token savings analytics
 gtkai filter install <mod@ver> [--replace]  Install an external filter module
-gtkai filter install-official <file> --core-version=<ver>  Install official filters
+gtkai filter install-marketplace <file> --core-version=<ver>  Install marketplace entries
 gtkai filter uninstall <id>      Remove an installed filter by full id
 gtkai filter list                List installed filters (active marked)
 gtkai version                    Print version

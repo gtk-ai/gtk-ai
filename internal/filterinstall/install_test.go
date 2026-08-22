@@ -66,12 +66,12 @@ func TestInstallGtkaiDateRemote(t *testing.T) {
 	}
 }
 
-func TestInstallOfficial(t *testing.T) {
+func TestInstallMarketplace(t *testing.T) {
 	testhome.Isolated(t)
 
 	root := moduleRoot(t)
-	official := filepath.Join(root, "filters/official.json")
-	installed, err := filterinstall.InstallOfficial(official, "0.11.0-beta.2", "")
+	catalog := filepath.Join(root, "marketplace.json")
+	installed, err := filterinstall.InstallMarketplace(catalog, "0.11.0-beta.2", "")
 	if err != nil {
 		t.Fatal(err)
 	}
