@@ -3,7 +3,7 @@ package python
 
 import (
 	"github.com/jmeiracorbal/gtk-ai/internal/registry"
-	"github.com/jmeiracorbal/gtk-ai/modules/pytest"
+	"github.com/jmeiracorbal/gtk-ai/plugins/pytest"
 )
 
 func init() {

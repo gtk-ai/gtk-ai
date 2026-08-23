@@ -11,10 +11,10 @@ import (
 	"testing"
 
 	"github.com/jmeiracorbal/gtk-ai/internal/proxy"
-	"github.com/jmeiracorbal/gtk-ai/modules/gain"
+	"github.com/jmeiracorbal/gtk-ai/plugins/gain"
 
-	_ "github.com/jmeiracorbal/gtk-ai/modules/git"
-	_ "github.com/jmeiracorbal/gtk-ai/modules/ls"
+	_ "github.com/jmeiracorbal/gtk-ai/plugins/git"
+	_ "github.com/jmeiracorbal/gtk-ai/plugins/ls"
 )
 
 func TestRunGitStatus(t *testing.T) {

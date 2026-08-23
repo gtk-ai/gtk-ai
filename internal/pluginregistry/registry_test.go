@@ -1,24 +1,24 @@
-package filterregistry_test
+package pluginregistry_test
 
 import (
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/jmeiracorbal/gtk-ai/internal/filterregistry"
+	"github.com/jmeiracorbal/gtk-ai/internal/pluginregistry"
 )
 
 func TestInstallAndActive(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
-	db, err := filterregistry.Open()
+	db, err := pluginregistry.Open()
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
 
-	rec := filterregistry.Record{
+	rec := pluginregistry.Record{
 		ID:           "gtk-ai/date",
 		Module:       "github.com/gtk-ai/date",
 		Version:      "v0.11.0",
@@ -51,13 +51,13 @@ func TestUninstallRemovesFilter(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
-	db, err := filterregistry.Open()
+	db, err := pluginregistry.Open()
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
 
-	rec := filterregistry.Record{
+	rec := pluginregistry.Record{
 		ID:           "gtk-ai/date",
 		Module:       "github.com/gtk-ai/date",
 		Version:      "v0.11.0",
@@ -90,13 +90,13 @@ func TestUninstallPromotesPreviousActive(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
-	db, err := filterregistry.Open()
+	db, err := pluginregistry.Open()
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
 
-	older := filterregistry.Record{
+	older := pluginregistry.Record{
 		ID:           "acme/date",
 		Module:       "github.com/acme/date",
 		Version:      "v0.1.0",
@@ -106,7 +106,7 @@ func TestUninstallPromotesPreviousActive(t *testing.T) {
 		ManifestPath: filepath.Join(home, "acme-gtkai.json"),
 		InstalledAt:  time.Now().Add(-time.Hour),
 	}
-	newer := filterregistry.Record{
+	newer := pluginregistry.Record{
 		ID:           "gtk-ai/date",
 		Module:       "github.com/gtk-ai/date",
 		Version:      "v0.11.0",
@@ -138,7 +138,7 @@ func TestUninstallMissing(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
-	db, err := filterregistry.Open()
+	db, err := pluginregistry.Open()
 	if err != nil {
 		t.Fatal(err)
 	}

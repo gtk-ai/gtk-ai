@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/jmeiracorbal/gtk-ai/internal/filterinstall"
+	"github.com/jmeiracorbal/gtk-ai/internal/plugininstall"
 	"github.com/jmeiracorbal/gtk-ai/internal/proxy"
 	"github.com/jmeiracorbal/gtk-ai/internal/testhome"
 )
@@ -39,7 +39,7 @@ func TestFilterInstallMarketplaceAndProxyDate(t *testing.T) {
 
 	root := moduleRoot(t)
 	catalog := filepath.Join(root, "marketplace.json")
-	if _, err := filterinstall.InstallMarketplace(catalog, "0.11.0-beta.2", ""); err != nil {
+	if _, err := plugininstall.InstallMarketplace(catalog, "0.11.0-beta.2", ""); err != nil {
 		t.Fatal(err)
 	}
 

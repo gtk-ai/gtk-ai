@@ -1,4 +1,4 @@
-package filterinstall_test
+package plugininstall_test
 
 import (
 	"bytes"
@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jmeiracorbal/gtk-ai/internal/filterinstall"
-	"github.com/jmeiracorbal/gtk-ai/internal/filterregistry"
+	"github.com/jmeiracorbal/gtk-ai/internal/plugininstall"
+	"github.com/jmeiracorbal/gtk-ai/internal/pluginregistry"
 	"github.com/jmeiracorbal/gtk-ai/internal/testhome"
 )
 
@@ -36,11 +36,11 @@ func captureStderr(t *testing.T, fn func()) string {
 func TestInstallConflictAbortsWithoutReplace(t *testing.T) {
 	home := testhome.Isolated(t)
 
-	db, err := filterregistry.Open()
+	db, err := pluginregistry.Open()
 	if err != nil {
 		t.Fatal(err)
 	}
-	existing := filterregistry.Record{
+	existing := pluginregistry.Record{
 		ID:           "acme/date",
 		Module:       "github.com/acme/date",
 		Version:      "v0.1.0",
@@ -55,7 +55,7 @@ func TestInstallConflictAbortsWithoutReplace(t *testing.T) {
 	}
 	db.Close()
 
-	_, err = filterinstall.Install(filterinstall.Options{
+	_, err = plugininstall.Install(plugininstall.Options{
 		Module:      "github.com/gtk-ai/date",
 		Version:     "v0.12.0",
 		CoreVersion: "0.11.0",
@@ -67,7 +67,7 @@ func TestInstallConflictAbortsWithoutReplace(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	db, err = filterregistry.Open()
+	db, err = pluginregistry.Open()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,11 +84,11 @@ func TestInstallConflictAbortsWithoutReplace(t *testing.T) {
 func TestInstallConflictWithReplace(t *testing.T) {
 	home := testhome.Isolated(t)
 
-	db, err := filterregistry.Open()
+	db, err := pluginregistry.Open()
 	if err != nil {
 		t.Fatal(err)
 	}
-	existing := filterregistry.Record{
+	existing := pluginregistry.Record{
 		ID:           "acme/date",
 		Module:       "github.com/acme/date",
 		Version:      "v0.1.0",
@@ -104,7 +104,7 @@ func TestInstallConflictWithReplace(t *testing.T) {
 	db.Close()
 
 	stderr := captureStderr(t, func() {
-		if _, err := filterinstall.Install(filterinstall.Options{
+		if _, err := plugininstall.Install(plugininstall.Options{
 			Module:      "github.com/gtk-ai/date",
 			Version:     "v0.12.0",
 			CoreVersion: "0.11.0",
@@ -117,7 +117,7 @@ func TestInstallConflictWithReplace(t *testing.T) {
 		t.Fatalf("expected replace notice on stderr, got %q", stderr)
 	}
 
-	db, err = filterregistry.Open()
+	db, err = pluginregistry.Open()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +141,7 @@ func TestInstallConflictWithReplace(t *testing.T) {
 func TestUninstallRemovesInstallDir(t *testing.T) {
 	testhome.Isolated(t)
 
-	rec, err := filterinstall.Install(filterinstall.Options{
+	rec, err := plugininstall.Install(plugininstall.Options{
 		Module:      "github.com/gtk-ai/date",
 		Version:     "v0.12.0",
 		CoreVersion: "0.11.0",
@@ -154,7 +154,7 @@ func TestUninstallRemovesInstallDir(t *testing.T) {
 		t.Fatalf("install dir missing before uninstall: %v", err)
 	}
 
-	removed, err := filterinstall.Uninstall(rec.ID)
+	removed, err := plugininstall.Uninstall(rec.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +165,7 @@ func TestUninstallRemovesInstallDir(t *testing.T) {
 		t.Fatalf("install dir still present after uninstall: %v", err)
 	}
 
-	db, err := filterregistry.Open()
+	db, err := pluginregistry.Open()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,11 +182,11 @@ func TestUninstallRemovesInstallDir(t *testing.T) {
 func TestUninstallPromotesPreviousFilter(t *testing.T) {
 	home := testhome.Isolated(t)
 
-	db, err := filterregistry.Open()
+	db, err := pluginregistry.Open()
 	if err != nil {
 		t.Fatal(err)
 	}
-	older := filterregistry.Record{
+	older := pluginregistry.Record{
 		ID:           "acme/date",
 		Module:       "github.com/acme/date",
 		Version:      "v0.1.0",
@@ -201,7 +201,7 @@ func TestUninstallPromotesPreviousFilter(t *testing.T) {
 	}
 	db.Close()
 
-	newer, err := filterinstall.Install(filterinstall.Options{
+	newer, err := plugininstall.Install(plugininstall.Options{
 		Module:      "github.com/gtk-ai/date",
 		Version:     "v0.12.0",
 		CoreVersion: "0.11.0",
@@ -210,11 +210,11 @@ func TestUninstallPromotesPreviousFilter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := filterinstall.Uninstall(newer.ID); err != nil {
+	if _, err := plugininstall.Uninstall(newer.ID); err != nil {
 		t.Fatal(err)
 	}
 
-	db, err = filterregistry.Open()
+	db, err = pluginregistry.Open()
 	if err != nil {
 		t.Fatal(err)
 	}

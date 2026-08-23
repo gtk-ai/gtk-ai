@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jmeiracorbal/gtk-ai/internal/filterinstall"
+	"github.com/jmeiracorbal/gtk-ai/internal/plugininstall"
 	"github.com/jmeiracorbal/gtk-ai/internal/testhome"
 )
 
@@ -166,7 +166,7 @@ func installMarketplaceFilters(t *testing.T) string {
 	t.Helper()
 	home := testhome.Isolated(t)
 	catalog := filepath.Join(moduleRoot(t), "marketplace.json")
-	if _, err := filterinstall.InstallMarketplace(catalog, "0.11.0-beta.2", ""); err != nil {
+	if _, err := plugininstall.InstallMarketplace(catalog, "0.11.0-beta.2", ""); err != nil {
 		t.Fatal(err)
 	}
 	return home

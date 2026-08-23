@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/jmeiracorbal/gtk-ai/internal/registry"
-	readmod "github.com/jmeiracorbal/gtk-ai/modules/read"
+	readmod "github.com/jmeiracorbal/gtk-ai/plugins/read"
 )
 
 func init() {

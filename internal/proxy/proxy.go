@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jmeiracorbal/gtk-ai/internal/filterregistry"
-	"github.com/jmeiracorbal/gtk-ai/internal/filtersubprocess"
+	"github.com/jmeiracorbal/gtk-ai/internal/pluginregistry"
+	"github.com/jmeiracorbal/gtk-ai/internal/pluginsubprocess"
 	"github.com/jmeiracorbal/gtk-ai/internal/registry"
 	"github.com/jmeiracorbal/gtk-ai/internal/text"
-	"github.com/jmeiracorbal/gtk-ai/modules/gain"
+	"github.com/jmeiracorbal/gtk-ai/plugins/gain"
 )
 
 // Run executes name with args, filters stdout, records gain, and returns the child exit code.
@@ -73,7 +73,7 @@ func Run(name string, args []string) int {
 }
 
 func resolveModule(name string) registry.Module {
-	db, err := filterregistry.Open()
+	db, err := pluginregistry.Open()
 	if err != nil {
 		return registry.Get(name)
 	}
@@ -82,7 +82,7 @@ func resolveModule(name string) registry.Module {
 	if err != nil || rec == nil {
 		return registry.Get(name)
 	}
-	return filtersubprocess.NewModule(name, rec.BinaryPath)
+	return pluginsubprocess.NewModule(name, rec.BinaryPath)
 }
 
 func extraEnv(mod registry.Module, args []string) []string {

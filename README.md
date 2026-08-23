@@ -127,7 +127,7 @@ gtkai filter uninstall gtk-ai/date
 
 | Command | Description |
 |---|---|
-| `filter install <module@version>` | Download, validate `gtkai.json`, build, register in `~/.gtk-ai/filters.db` |
+| `filter install <module@version>` | Download, validate `gtkai.json`, build, register in `~/.gtk-ai/plugins.db` |
 | `filter install … --replace` | Required when another filter is already **active** for the same shell command |
 | `filter install-marketplace <file>` | Install every entry in `marketplace.json` (`install.sh` uses this; `--replace` is implicit) |
 | `filter list` | List installed filters; marks the active one per command |
@@ -143,7 +143,7 @@ External filters use contract **`subprocess/v1`**: gtk-ai runs the filter as an 
 
 ## Adding a module
 
-1. Create `modules/mycommand/mycommand.go`
+1. Create `plugins/mycommand/mycommand.go`
 2. Implement the `Module` interface
 3. Register at `init()` time
 4. Import in `cmd/gtkai/main.go`
@@ -169,7 +169,7 @@ func (m *Module) TokensAfter(filtered string) int { return registry.EstimateToke
 ```
 
 ```go
-_ "github.com/jmeiracorbal/gtk-ai/modules/mycommand"
+_ "github.com/jmeiracorbal/gtk-ai/plugins/mycommand"
 ```
 
 No other changes needed.
@@ -215,7 +215,7 @@ gtk-ai/
 │   ├── text/               # ANSI strip
 │   ├── jsonmerge/          # installer config merge
 │   └── hook/               # PreToolUse and PostToolUse handlers (per-agent JSON)
-├── modules/
+├── plugins/
 │   ├── find/               # find output filter
 │   ├── ls/                 # ls output filter
 │   ├── git/                # git subcommand filters

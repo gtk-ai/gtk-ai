@@ -1,4 +1,4 @@
-# CLAUDE.md
+# AGENTS.md
 
 ## Architecture
 
@@ -19,7 +19,7 @@ When changing the version, update every file that exposes it:
 - `.claude-plugin/plugin.json`
 - `.claude-plugin/marketplace.json`
 - `plugin/.claude-plugin/plugin.json`
-- `modules/mcpscan/mcpscan.go`
+- `plugins/mcpscan/mcpscan.go`
 - `README.md`
 
 To check no old references remain:
@@ -36,6 +36,19 @@ Filtering is heuristic: truncation, extension grouping, comment stripping, line 
 
 Use: heuristic pruning, rule-based filtering, deterministic truncation.  
 Avoid: intelligent compression, semantic optimization, smart deduplication.
+
+## Plugin infrastructure
+
+External plugins are binaries that implement the `registry.Module` interface via a JSON stdin/stdout protocol. The infrastructure lives in `internal/`:
+
+| Package | Role |
+|---|---|
+| `pluginregistry` | SQLite DB (`~/.gtk-ai/plugins.db`) — tracks installed plugins |
+| `pluginsubprocess` | Adapts an external binary to `registry.Module` via JSON protocol |
+| `plugininstall` | Downloads, validates, and installs plugin binaries |
+| `pluginmanifest` | Parses and validates `gtkai.json` plugin manifests |
+
+Built-in plugins in `plugins/` are compiled into the binary and registered via `init()`. External plugins from the marketplace are subprocess-based (JSON protocol). Both implement `registry.Module` — the proxy treats them identically.
 
 ## Before committing
 
