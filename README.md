@@ -120,7 +120,7 @@ Command filters ship as standalone repos (for example `github.com/gtk-ai/date`).
 ```bash
 gtkai filter install github.com/gtk-ai/date@v0.12.0
 gtkai filter install github.com/gtk-ai/date@v0.12.0 --replace
-gtkai filter install-marketplace marketplace.json --core-version=0.11.0-beta.3
+gtkai filter install-marketplace marketplace.json --core-version=0.11.0-beta.4
 gtkai filter list
 gtkai filter uninstall gtk-ai/date
 ```
