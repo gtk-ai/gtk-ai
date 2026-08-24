@@ -42,10 +42,10 @@ Usage:
   gtkai <module> [args...]         Run a registered command through the proxy
   gtkai mcp-scan                   List tools from all MCP servers, suggest passthrough prefixes
   gtkai gain                       Show token savings analytics
-  gtkai filter install <mod@ver> [--replace]  Install an external filter module (go dependency)
-  gtkai filter install-marketplace <file> --core-version=<ver>  Install entries from marketplace.json
-  gtkai filter uninstall <id>      Remove an installed filter by full id
-  gtkai filter list                List installed external filters (active marked)
+  gtkai plugin install <mod@ver> [--replace]  Install an external plugin (go dependency)
+  gtkai plugin install-marketplace <file> --core-version=<ver>  Install entries from marketplace.json
+  gtkai plugin uninstall <id>      Remove an installed plugin by full id
+  gtkai plugin list                List installed plugins (active marked)
   gtkai version                    Print version
 
 Agents:
@@ -130,8 +130,8 @@ func main() {
 			os.Exit(1)
 		}
 
-	case "filter":
-		runFilter(os.Args[2:])
+	case "plugin":
+		runPlugin(os.Args[2:])
 
 	default:
 		if registry.Get(os.Args[1]) == nil && !pluginregistry.HasActive(os.Args[1]) {

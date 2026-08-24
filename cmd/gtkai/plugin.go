@@ -9,32 +9,32 @@ import (
 	"github.com/jmeiracorbal/gtk-ai/internal/pluginregistry"
 )
 
-func runFilter(args []string) {
+func runPlugin(args []string) {
 	if len(args) == 0 {
-		printFilterUsage()
+		printPluginUsage()
 		os.Exit(1)
 	}
 	switch args[0] {
 	case "install":
-		runFilterInstall(args[1:])
+		runPluginInstall(args[1:])
 	case "install-marketplace":
-		runFilterInstallMarketplace(args[1:])
+		runPluginInstallMarketplace(args[1:])
 	case "uninstall":
-		runFilterUninstall(args[1:])
+		runPluginUninstall(args[1:])
 	case "list":
-		runFilterList()
+		runPluginList()
 	default:
-		fmt.Fprintf(os.Stderr, "gtkai filter: unknown subcommand %q\n", args[0])
-		printFilterUsage()
+		fmt.Fprintf(os.Stderr, "gtkai plugin: unknown subcommand %q\n", args[0])
+		printPluginUsage()
 		os.Exit(1)
 	}
 }
 
-func printFilterUsage() {
-	fmt.Fprintln(os.Stderr, "usage: gtkai filter install <module@version> [--replace] | install-marketplace <marketplace.json> | uninstall <id> | list")
+func printPluginUsage() {
+	fmt.Fprintln(os.Stderr, "usage: gtkai plugin install <module@version> [--replace] | install-marketplace <marketplace.json> | uninstall <id> | list")
 }
 
-func runFilterInstall(args []string) {
+func runPluginInstall(args []string) {
 	var replace bool
 	var ref string
 	for _, arg := range args {
@@ -42,47 +42,47 @@ func runFilterInstall(args []string) {
 		case arg == "--replace":
 			replace = true
 		case strings.HasPrefix(arg, "-"):
-			fmt.Fprintf(os.Stderr, "gtkai filter install: unknown flag %q\n", arg)
+			fmt.Fprintf(os.Stderr, "gtkai plugin install: unknown flag %q\n", arg)
 			os.Exit(1)
 		default:
 			if ref != "" {
-				fmt.Fprintln(os.Stderr, "usage: gtkai filter install <module@version> [--replace]")
+				fmt.Fprintln(os.Stderr, "usage: gtkai plugin install <module@version> [--replace]")
 				os.Exit(1)
 			}
 			ref = arg
 		}
 	}
 	if ref == "" {
-		fmt.Fprintln(os.Stderr, "usage: gtkai filter install <module@version> [--replace]")
+		fmt.Fprintln(os.Stderr, "usage: gtkai plugin install <module@version> [--replace]")
 		os.Exit(1)
 	}
-	module, filterVer, err := plugininstall.ParseRef(ref)
+	module, pluginVer, err := plugininstall.ParseRef(ref)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "gtkai filter install: %v\n", err)
+		fmt.Fprintf(os.Stderr, "gtkai plugin install: %v\n", err)
 		os.Exit(1)
 	}
 	rec, err := plugininstall.Install(plugininstall.Options{
 		Module:      module,
-		Version:     filterVer,
+		Version:     pluginVer,
 		CoreVersion: version,
 		ReleaseRepo: releaseRepo(),
 		Replace:     replace,
 	})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "gtkai filter install: %v\n", err)
+		fmt.Fprintf(os.Stderr, "gtkai plugin install: %v\n", err)
 		os.Exit(1)
 	}
 	fmt.Printf("installed %s@%s -> %s (%s)\n", rec.Module, rec.Version, rec.ID, rec.BinaryPath)
 }
 
-func runFilterInstallMarketplace(args []string) {
+func runPluginInstallMarketplace(args []string) {
 	var marketplacePath string
 	var coreVersion string
 	for i := 0; i < len(args); i++ {
 		switch {
 		case args[i] == "--core-version":
 			if i+1 >= len(args) {
-				fmt.Fprintln(os.Stderr, "gtkai filter install-marketplace: --core-version requires a value")
+				fmt.Fprintln(os.Stderr, "gtkai plugin install-marketplace: --core-version requires a value")
 				os.Exit(1)
 			}
 			coreVersion = args[i+1]
@@ -90,27 +90,27 @@ func runFilterInstallMarketplace(args []string) {
 		case strings.HasPrefix(args[i], "--core-version="):
 			coreVersion = strings.TrimPrefix(args[i], "--core-version=")
 		case strings.HasPrefix(args[i], "-"):
-			fmt.Fprintf(os.Stderr, "gtkai filter install-marketplace: unknown flag %q\n", args[i])
+			fmt.Fprintf(os.Stderr, "gtkai plugin install-marketplace: unknown flag %q\n", args[i])
 			os.Exit(1)
 		default:
 			if marketplacePath != "" {
-				fmt.Fprintln(os.Stderr, "gtkai filter install-marketplace: too many arguments")
+				fmt.Fprintln(os.Stderr, "gtkai plugin install-marketplace: too many arguments")
 				os.Exit(1)
 			}
 			marketplacePath = args[i]
 		}
 	}
 	if marketplacePath == "" {
-		fmt.Fprintln(os.Stderr, "usage: gtkai filter install-marketplace <marketplace.json> --core-version=<ver>")
+		fmt.Fprintln(os.Stderr, "usage: gtkai plugin install-marketplace <marketplace.json> --core-version=<ver>")
 		os.Exit(1)
 	}
 	if coreVersion == "" {
-		fmt.Fprintln(os.Stderr, "gtkai filter install-marketplace: --core-version is required")
+		fmt.Fprintln(os.Stderr, "gtkai plugin install-marketplace: --core-version is required")
 		os.Exit(1)
 	}
 	installed, err := plugininstall.InstallMarketplace(marketplacePath, coreVersion, releaseRepo())
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "gtkai filter install-marketplace: %v\n", err)
+		fmt.Fprintf(os.Stderr, "gtkai plugin install-marketplace: %v\n", err)
 		os.Exit(1)
 	}
 	for _, rec := range installed {
@@ -118,38 +118,38 @@ func runFilterInstallMarketplace(args []string) {
 	}
 }
 
-func runFilterUninstall(args []string) {
+func runPluginUninstall(args []string) {
 	if len(args) != 1 || args[0] == "" {
-		fmt.Fprintln(os.Stderr, "usage: gtkai filter uninstall <id>")
+		fmt.Fprintln(os.Stderr, "usage: gtkai plugin uninstall <id>")
 		os.Exit(1)
 	}
 	rec, err := plugininstall.Uninstall(args[0])
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "gtkai filter uninstall: %v\n", err)
+		fmt.Fprintf(os.Stderr, "gtkai plugin uninstall: %v\n", err)
 		os.Exit(1)
 	}
 	fmt.Printf("uninstalled %s (argv0=%s)\n", rec.ID, rec.Argv0)
 }
 
-func runFilterList() {
+func runPluginList() {
 	db, err := pluginregistry.Open()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "gtkai filter list: %v\n", err)
+		fmt.Fprintf(os.Stderr, "gtkai plugin list: %v\n", err)
 		os.Exit(1)
 	}
 	defer db.Close()
 	recs, err := db.List()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "gtkai filter list: %v\n", err)
+		fmt.Fprintf(os.Stderr, "gtkai plugin list: %v\n", err)
 		os.Exit(1)
 	}
 	if len(recs) == 0 {
-		fmt.Println("no filters installed")
+		fmt.Println("no plugins installed")
 		return
 	}
-	activeByArgv0, err := activeFilterIDs(db, recs)
+	activeByArgv0, err := activePluginIDs(db, recs)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "gtkai filter list: %v\n", err)
+		fmt.Fprintf(os.Stderr, "gtkai plugin list: %v\n", err)
 		os.Exit(1)
 	}
 	for _, rec := range recs {
@@ -161,7 +161,7 @@ func runFilterList() {
 	}
 }
 
-func activeFilterIDs(db *pluginregistry.DB, recs []pluginregistry.Record) (map[string]string, error) {
+func activePluginIDs(db *pluginregistry.DB, recs []pluginregistry.Record) (map[string]string, error) {
 	seen := make(map[string]struct{})
 	out := make(map[string]string)
 	for _, rec := range recs {

@@ -46,7 +46,7 @@ The binary `gtkai`. Responsibilities:
 - `gtkai <cmd> [args…]` — proxy: runs the real command, captures stdout/stderr, calls the active filter, applies `never_worse`, records `gain`, propagates exit code.
 - `gtkai hook-pre --agent <name>` — pre-execution: reads the runtime event, extracts the shell command, resolves the active filter by argv0, returns the rewritten command in the agent's envelope.
 - `gtkai hook-post --agent <name>` — post-execution: reads the runtime event, filters output, returns the result in the agent's envelope. Used for Bash output and for native tools (Read, MCP, Grep, Glob) that do not go through a shell.
-- `gtkai filter install|uninstall|list` — filter registry management.
+- `gtkai plugin install|uninstall|list` — filter registry management.
 - `gtkai gain` — token savings analytics.
 - `gtkai mcp-scan` — lists MCP tools, suggests passthrough patterns.
 
@@ -134,9 +134,9 @@ Rules:
 ### install transport (sketch)
 
 ```
-gtkai filter install github.com/gtk-ai/ls@v1
-gtkai filter uninstall gtk-ai/ls
-gtkai filter list
+gtkai plugin install github.com/gtk-ai/ls@v1
+gtkai plugin uninstall gtk-ai/ls
+gtkai plugin list
 ```
 
 The exact transport (Go plugin, subprocess + manifest, static binary) is an implementation detail of §4. The id rules and conflict/uninstall semantics above are not.
@@ -240,7 +240,7 @@ Required fields: `id`, `command`, `platforms`, `contract`, `gtkai-core-version`.
   - `"min"` — running `gtkai` must be `>= version`.
   - `"exact"` — running `gtkai` must match `version` exactly.
 
-**Module version is not in the manifest.** It is resolved from the install ref — the git tag of the filter repository. Example: `gtkai filter install github.com/gtk-ai/date@v0.12.0` installs tag `v0.12.0`; the core records that version in the registry at install time.
+**Module version is not in the manifest.** It is resolved from the install ref — the git tag of the filter repository. Example: `gtkai plugin install github.com/gtk-ai/date@v0.12.0` installs tag `v0.12.0`; the core records that version in the registry at install time.
 
 On install, the core validates `gtkai-core-version` against the running binary:
 
@@ -261,7 +261,7 @@ default:
 
 ### Validation on install
 
-`gtkai filter install` performs these checks in order before committing anything to the registry:
+`gtkai plugin install` performs these checks in order before committing anything to the registry:
 
 1. Git tag/ref resolves to a valid semver (module version).
 2. `gtkai.json` is present and parses without error.
@@ -291,7 +291,7 @@ Binaries are downloaded from the GitHub Releases page of the filter repository a
 
 ### Marketplace and install.sh
 
-`marketplace.json` at the repository root is the single catalog of installable gtk-ai extensions. `install.sh` runs `gtkai filter install-marketplace marketplace.json` by default (`--replace` implicit).
+`marketplace.json` at the repository root is the single catalog of installable gtk-ai extensions. `install.sh` runs `gtkai plugin install-marketplace marketplace.json` by default (`--replace` implicit).
 
 ```json
 {
