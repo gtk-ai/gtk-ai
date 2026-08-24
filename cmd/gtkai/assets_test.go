@@ -10,9 +10,9 @@ import (
 func TestShippedAgentAssets(t *testing.T) {
 	root := filepath.Join("..", "..")
 	files := []string{
-		"plugin/scripts/gtkai-pre-tool-use.sh",
-		"plugin/scripts/gtkai-post-tool-use.sh",
-		"plugin/hooks/hooks.json",
+		"integrations/claude/scripts/gtkai-pre-tool-use.sh",
+		"integrations/claude/scripts/gtkai-post-tool-use.sh",
+		"integrations/claude/hooks/hooks.json",
 		"scripts/claudecode/gtk-ai.md",
 		"scripts/cursor/hooks/gtkai-pre-tool-use.sh",
 		"scripts/cursor/hooks/gtkai-post-tool-use.sh",
@@ -32,14 +32,14 @@ func TestShippedAgentAssets(t *testing.T) {
 
 func TestClaudePluginScriptsPassAgent(t *testing.T) {
 	root := filepath.Join("..", "..")
-	pre, err := os.ReadFile(filepath.Join(root, "plugin/scripts/gtkai-pre-tool-use.sh"))
+	pre, err := os.ReadFile(filepath.Join(root, "integrations/claude/scripts/gtkai-pre-tool-use.sh"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(string(pre), "hook-pre --agent=claudecode") {
 		t.Fatal("claude pre script must pass --agent=claudecode")
 	}
-	post, err := os.ReadFile(filepath.Join(root, "plugin/scripts/gtkai-post-tool-use.sh"))
+	post, err := os.ReadFile(filepath.Join(root, "integrations/claude/scripts/gtkai-post-tool-use.sh"))
 	if err != nil {
 		t.Fatal(err)
 	}
