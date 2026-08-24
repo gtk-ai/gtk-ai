@@ -70,9 +70,9 @@ jobs:
           for f in \
             integrations/claude/scripts/gtkai-post-tool-use.sh \
             integrations/claude/scripts/gtkai-pre-tool-use.sh \
-            scripts/cursor/hooks/gtkai-pre-tool-use.sh \
-            scripts/cursor/hooks/gtkai-post-tool-use.sh \
-            scripts/codex/hooks/gtkai-pre-tool-use.sh
+            integrations/cursor/hooks/gtkai-pre-tool-use.sh \
+            integrations/cursor/hooks/gtkai-post-tool-use.sh \
+            integrations/codex/hooks/gtkai-pre-tool-use.sh
           do
             mode=$(git ls-files -s "$f" | awk '{print $1}')
             if [ "$mode" != "100755" ]; then
