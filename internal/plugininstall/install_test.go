@@ -1,12 +1,12 @@
-package filterinstall_test
+package plugininstall_test
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/jmeiracorbal/gtk-ai/internal/filterinstall"
-	"github.com/jmeiracorbal/gtk-ai/internal/filterregistry"
+	"github.com/jmeiracorbal/gtk-ai/internal/plugininstall"
+	"github.com/jmeiracorbal/gtk-ai/internal/pluginregistry"
 	"github.com/jmeiracorbal/gtk-ai/internal/testhome"
 )
 
@@ -31,7 +31,7 @@ func moduleRoot(t *testing.T) string {
 func TestInstallGtkaiDateRemote(t *testing.T) {
 	testhome.Isolated(t)
 
-	rec, err := filterinstall.Install(filterinstall.Options{
+	rec, err := plugininstall.Install(plugininstall.Options{
 		Module:      "github.com/gtk-ai/date",
 		Version:     "v0.12.0",
 		CoreVersion: "0.11.0",
@@ -52,7 +52,7 @@ func TestInstallGtkaiDateRemote(t *testing.T) {
 		t.Fatalf("manifest missing: %v", err)
 	}
 
-	db, err := filterregistry.Open()
+	db, err := pluginregistry.Open()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func TestInstallMarketplace(t *testing.T) {
 
 	root := moduleRoot(t)
 	catalog := filepath.Join(root, "marketplace.json")
-	installed, err := filterinstall.InstallMarketplace(catalog, "0.11.0-beta.2", "")
+	installed, err := plugininstall.InstallMarketplace(catalog, "0.11.0-beta.2", "")
 	if err != nil {
 		t.Fatal(err)
 	}

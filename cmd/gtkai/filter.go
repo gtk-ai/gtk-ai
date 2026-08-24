@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/jmeiracorbal/gtk-ai/internal/filterinstall"
-	"github.com/jmeiracorbal/gtk-ai/internal/filterregistry"
+	"github.com/jmeiracorbal/gtk-ai/internal/plugininstall"
+	"github.com/jmeiracorbal/gtk-ai/internal/pluginregistry"
 )
 
 func runFilter(args []string) {
@@ -56,12 +56,12 @@ func runFilterInstall(args []string) {
 		fmt.Fprintln(os.Stderr, "usage: gtkai filter install <module@version> [--replace]")
 		os.Exit(1)
 	}
-	module, filterVer, err := filterinstall.ParseRef(ref)
+	module, filterVer, err := plugininstall.ParseRef(ref)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "gtkai filter install: %v\n", err)
 		os.Exit(1)
 	}
-	rec, err := filterinstall.Install(filterinstall.Options{
+	rec, err := plugininstall.Install(plugininstall.Options{
 		Module:      module,
 		Version:     filterVer,
 		CoreVersion: version,
@@ -108,7 +108,7 @@ func runFilterInstallMarketplace(args []string) {
 		fmt.Fprintln(os.Stderr, "gtkai filter install-marketplace: --core-version is required")
 		os.Exit(1)
 	}
-	installed, err := filterinstall.InstallMarketplace(marketplacePath, coreVersion, releaseRepo())
+	installed, err := plugininstall.InstallMarketplace(marketplacePath, coreVersion, releaseRepo())
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "gtkai filter install-marketplace: %v\n", err)
 		os.Exit(1)
@@ -123,7 +123,7 @@ func runFilterUninstall(args []string) {
 		fmt.Fprintln(os.Stderr, "usage: gtkai filter uninstall <id>")
 		os.Exit(1)
 	}
-	rec, err := filterinstall.Uninstall(args[0])
+	rec, err := plugininstall.Uninstall(args[0])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "gtkai filter uninstall: %v\n", err)
 		os.Exit(1)
@@ -132,7 +132,7 @@ func runFilterUninstall(args []string) {
 }
 
 func runFilterList() {
-	db, err := filterregistry.Open()
+	db, err := pluginregistry.Open()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "gtkai filter list: %v\n", err)
 		os.Exit(1)
@@ -161,7 +161,7 @@ func runFilterList() {
 	}
 }
 
-func activeFilterIDs(db *filterregistry.DB, recs []filterregistry.Record) (map[string]string, error) {
+func activeFilterIDs(db *pluginregistry.DB, recs []pluginregistry.Record) (map[string]string, error) {
 	seen := make(map[string]struct{})
 	out := make(map[string]string)
 	for _, rec := range recs {

@@ -1,5 +1,5 @@
-// Package filtersubprocess invokes external filter binaries using subprocess/v1.
-package filtersubprocess
+// Package pluginsubprocess invokes external plugin binaries using subprocess/v1.
+package pluginsubprocess
 
 import (
 	"bytes"

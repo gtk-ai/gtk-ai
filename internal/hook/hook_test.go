@@ -10,11 +10,11 @@ import (
 	"github.com/jmeiracorbal/gtk-ai/internal/hook"
 	"github.com/jmeiracorbal/gtk-ai/internal/registry"
 
-	_ "github.com/jmeiracorbal/gtk-ai/modules/find"
-	_ "github.com/jmeiracorbal/gtk-ai/modules/git"
-	_ "github.com/jmeiracorbal/gtk-ai/modules/grep"
-	_ "github.com/jmeiracorbal/gtk-ai/modules/ls"
-	_ "github.com/jmeiracorbal/gtk-ai/modules/rg"
+	_ "github.com/jmeiracorbal/gtk-ai/plugins/find"
+	_ "github.com/jmeiracorbal/gtk-ai/plugins/git"
+	_ "github.com/jmeiracorbal/gtk-ai/plugins/grep"
+	_ "github.com/jmeiracorbal/gtk-ai/plugins/ls"
+	_ "github.com/jmeiracorbal/gtk-ai/plugins/rg"
 )
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

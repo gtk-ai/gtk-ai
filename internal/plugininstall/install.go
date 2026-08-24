@@ -1,5 +1,5 @@
-// Package filterinstall downloads, validates, and installs external filter modules.
-package filterinstall
+// Package plugininstall downloads, validates, and installs external plugin modules.
+package plugininstall
 
 import (
 	"encoding/json"
@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jmeiracorbal/gtk-ai/internal/filtermanifest"
-	"github.com/jmeiracorbal/gtk-ai/internal/filterregistry"
-	"github.com/jmeiracorbal/gtk-ai/internal/filtersubprocess"
+	"github.com/jmeiracorbal/gtk-ai/internal/pluginmanifest"
+	"github.com/jmeiracorbal/gtk-ai/internal/pluginregistry"
+	"github.com/jmeiracorbal/gtk-ai/internal/pluginsubprocess"
 	"github.com/jmeiracorbal/gtk-ai/internal/storage"
 )
 
@@ -41,7 +41,7 @@ func ParseRef(ref string) (module, version string, err error) {
 }
 
 // Install downloads or builds the filter, validates gtkai.json, and registers it.
-func Install(opts Options) (*filterregistry.Record, error) {
+func Install(opts Options) (*pluginregistry.Record, error) {
 	if opts.Module == "" {
 		return nil, fmt.Errorf("module is empty")
 	}
@@ -58,19 +58,19 @@ func Install(opts Options) (*filterregistry.Record, error) {
 		return nil, err
 	}
 
-	manifestPath := filepath.Join(srcDir, filtermanifest.ManifestFileName)
-	manifest, err := filtermanifest.ParseFile(manifestPath)
+	manifestPath := filepath.Join(srcDir, pluginmanifest.ManifestFileName)
+	manifest, err := pluginmanifest.ParseFile(manifestPath)
 	if err != nil {
 		return nil, err
 	}
 	if err := manifest.Validate(opts.CoreVersion, platform); err != nil {
 		return nil, err
 	}
-	if err := filtersubprocess.LivenessCheck(binary); err != nil {
+	if err := pluginsubprocess.LivenessCheck(binary); err != nil {
 		return nil, fmt.Errorf("liveness: %w", err)
 	}
 
-	db, err := filterregistry.Open()
+	db, err := pluginregistry.Open()
 	if err != nil {
 		return nil, err
 	}
@@ -87,17 +87,17 @@ func Install(opts Options) (*filterregistry.Record, error) {
 		return nil, err
 	}
 
-	binName := filtersubprocess.BinaryNameFromID(manifest.ID)
+	binName := pluginsubprocess.BinaryNameFromID(manifest.ID)
 	destBin := filepath.Join(destDir, binName)
 	if err := copyFile(binary, destBin, 0o755); err != nil {
 		return nil, err
 	}
-	destManifest := filepath.Join(destDir, filtermanifest.ManifestFileName)
+	destManifest := filepath.Join(destDir, pluginmanifest.ManifestFileName)
 	if err := copyFile(manifestPath, destManifest, 0o644); err != nil {
 		return nil, err
 	}
 
-	rec := filterregistry.Record{
+	rec := pluginregistry.Record{
 		ID:           manifest.ID,
 		Module:       opts.Module,
 		Version:      opts.Version,
@@ -114,7 +114,7 @@ func Install(opts Options) (*filterregistry.Record, error) {
 	return &rec, nil
 }
 
-func checkReplaceConflict(db *filterregistry.DB, id, argv0 string, replace bool) error {
+func checkReplaceConflict(db *pluginregistry.DB, id, argv0 string, replace bool) error {
 	prev, err := db.Active(argv0)
 	if err != nil {
 		return err
@@ -320,12 +320,12 @@ func LoadMarketplace(path string) (Marketplace, error) {
 }
 
 // InstallMarketplace installs every entry listed in marketplace.json.
-func InstallMarketplace(marketplacePath, coreVersion, releaseRepo string) ([]filterregistry.Record, error) {
+func InstallMarketplace(marketplacePath, coreVersion, releaseRepo string) ([]pluginregistry.Record, error) {
 	catalog, err := LoadMarketplace(marketplacePath)
 	if err != nil {
 		return nil, err
 	}
-	var installed []filterregistry.Record
+	var installed []pluginregistry.Record
 	for _, e := range catalog.Entries {
 		opts := Options{
 			Module:      e.Module,

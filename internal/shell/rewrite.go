@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/jmeiracorbal/gtk-ai/internal/filterregistry"
+	"github.com/jmeiracorbal/gtk-ai/internal/pluginregistry"
 	"github.com/jmeiracorbal/gtk-ai/internal/registry"
 )
 
@@ -168,7 +168,7 @@ func rewriteSimple(toks []token, gtkaiBin string) ([]token, bool) {
 	if base == "gtkai" {
 		return nil, false
 	}
-	if registry.Get(base) == nil && !filterregistry.HasActive(base) {
+	if registry.Get(base) == nil && !pluginregistry.HasActive(base) {
 		return nil, false
 	}
 

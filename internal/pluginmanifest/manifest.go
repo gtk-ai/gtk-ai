@@ -1,5 +1,5 @@
-// Package filtermanifest parses and validates external filter manifests (gtkai.json).
-package filtermanifest
+// Package pluginmanifest parses and validates external plugin manifests (gtkai.json).
+package pluginmanifest
 
 import (
 	"encoding/json"

@@ -3,19 +3,19 @@ package shell
 import (
 	"testing"
 
-	_ "github.com/jmeiracorbal/gtk-ai/modules/cargo"
-	_ "github.com/jmeiracorbal/gtk-ai/modules/find"
-	_ "github.com/jmeiracorbal/gtk-ai/modules/go"
-	_ "github.com/jmeiracorbal/gtk-ai/modules/git"
-	_ "github.com/jmeiracorbal/gtk-ai/modules/grep"
-	_ "github.com/jmeiracorbal/gtk-ai/modules/ls"
-	_ "github.com/jmeiracorbal/gtk-ai/modules/docker"
-	_ "github.com/jmeiracorbal/gtk-ai/modules/npmtest"
-	_ "github.com/jmeiracorbal/gtk-ai/modules/pytest"
-	_ "github.com/jmeiracorbal/gtk-ai/modules/python"
-	_ "github.com/jmeiracorbal/gtk-ai/modules/readcmd"
-	_ "github.com/jmeiracorbal/gtk-ai/modules/rg"
-	_ "github.com/jmeiracorbal/gtk-ai/modules/tree"
+	_ "github.com/jmeiracorbal/gtk-ai/plugins/cargo"
+	_ "github.com/jmeiracorbal/gtk-ai/plugins/find"
+	_ "github.com/jmeiracorbal/gtk-ai/plugins/go"
+	_ "github.com/jmeiracorbal/gtk-ai/plugins/git"
+	_ "github.com/jmeiracorbal/gtk-ai/plugins/grep"
+	_ "github.com/jmeiracorbal/gtk-ai/plugins/ls"
+	_ "github.com/jmeiracorbal/gtk-ai/plugins/docker"
+	_ "github.com/jmeiracorbal/gtk-ai/plugins/npmtest"
+	_ "github.com/jmeiracorbal/gtk-ai/plugins/pytest"
+	_ "github.com/jmeiracorbal/gtk-ai/plugins/python"
+	_ "github.com/jmeiracorbal/gtk-ai/plugins/readcmd"
+	_ "github.com/jmeiracorbal/gtk-ai/plugins/rg"
+	_ "github.com/jmeiracorbal/gtk-ai/plugins/tree"
 )
 
 func TestRewriteNpmTest(t *testing.T) {

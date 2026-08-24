@@ -159,18 +159,18 @@ The exact transport (Go plugin, subprocess + manifest, static binary) is an impl
 
 | Intercepted | Module | Done |
 |---|---|---|
-| `ls` | `modules/ls` | 0.4.0 |
-| `git` (status, log, diff, branch, show, write, stash) | `modules/git` | 0.4.0–0.5.0 |
-| `grep`, `rg` | `modules/grep`, `modules/rg` | 0.4.0 |
-| `find` | `modules/find` | 0.4.0 |
-| `cat`, `head`, `tail` | `modules/readcmd` | 0.5.0 |
-| `tree` | `modules/tree` | 0.5.0 |
+| `ls` | `plugins/ls` | 0.4.0 |
+| `git` (status, log, diff, branch, show, write, stash) | `plugins/git` | 0.4.0–0.5.0 |
+| `grep`, `rg` | `plugins/grep`, `plugins/rg` | 0.4.0 |
+| `find` | `plugins/find` | 0.4.0 |
+| `cat`, `head`, `tail` | `plugins/readcmd` | 0.5.0 |
+| `tree` | `plugins/tree` | 0.5.0 |
 | `Read`, MCP | `internal/hook` (PostToolUse) | 0.5.0 |
-| `go` (test, build, vet) | `modules/go` | 0.6.0 |
-| `cargo` (test, build, check, clippy) | `modules/cargo` | 0.7.0 |
-| `pytest`, `python -m pytest` | `modules/pytest`, `modules/python` | 0.8.0 |
-| `npm`, `pnpm`, `npx` (test) | `modules/npmtest` | 0.9.0 |
-| `docker` (ps, images, logs, compose ps/logs) | `modules/docker` | 0.9.0 |
+| `go` (test, build, vet) | `plugins/go` | 0.6.0 |
+| `cargo` (test, build, check, clippy) | `plugins/cargo` | 0.7.0 |
+| `pytest`, `python -m pytest` | `plugins/pytest`, `plugins/python` | 0.8.0 |
+| `npm`, `pnpm`, `npx` (test) | `plugins/npmtest` | 0.9.0 |
+| `docker` (ps, images, logs, compose ps/logs) | `plugins/docker` | 0.9.0 |
 | Multi-runtime: Cursor, Codex, OpenCode | `internal/hook` | 0.10.0 |
 
 ## §4 — External filter transport
@@ -277,7 +277,7 @@ Any failure aborts the install with a descriptive error. No partial state is wri
 
 ### Persistence
 
-Installed filters are recorded in `~/.gtk-ai/filters.db` (SQLite). The path is resolved via `internal/storage.Dir()`. Schema: `id`, `filters`, `version`, `contract`, `binary_path`, `installed_at`. The installed module version is stored from the Git tag, not from the manifest.
+Installed filters are recorded in `~/.gtk-ai/plugins.db` (SQLite). The path is resolved via `internal/storage.Dir()`. Schema: `id`, `filters`, `version`, `contract`, `binary_path`, `installed_at`. The installed module version is stored from the Git tag, not from the manifest.
 
 ### Binary layout
 
@@ -305,7 +305,7 @@ Binaries are downloaded from the GitHub Releases page of the filter repository a
 }
 ```
 
-Each entry is installed via `filter install` semantics (download, validate `gtkai.json`, register in `~/.gtk-ai/filters.db`). New filters are added here — no separate official filter list.
+Each entry is installed via `filter install` semantics (download, validate `gtkai.json`, register in `~/.gtk-ai/plugins.db`). New filters are added here — no separate official filter list.
 
 The reference template repository for building a new filter is [gtk-ai/date](https://github.com/gtk-ai/date) ([HOWTO.md](https://github.com/gtk-ai/date/blob/main/HOWTO.md)).
 

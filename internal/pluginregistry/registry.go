@@ -1,5 +1,5 @@
-// Package filterregistry persists installed external filters in ~/.gtk-ai/filters.db.
-package filterregistry
+// Package pluginregistry persists installed external plugins in ~/.gtk-ai/plugins.db.
+package pluginregistry
 
 import (
 	"database/sql"
@@ -42,13 +42,13 @@ type DB struct {
 	db *sql.DB
 }
 
-// Open opens or creates ~/.gtk-ai/filters.db.
+// Open opens or creates ~/.gtk-ai/plugins.db.
 func Open() (*DB, error) {
 	dir, err := storage.Dir()
 	if err != nil {
 		return nil, err
 	}
-	db, err := sql.Open("sqlite", filepath.Join(dir, "filters.db"))
+	db, err := sql.Open("sqlite", filepath.Join(dir, "plugins.db"))
 	if err != nil {
 		return nil, err
 	}

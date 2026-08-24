@@ -1,4 +1,4 @@
-package filtermanifest_test
+package pluginmanifest_test
 
 import (
 	"encoding/json"
@@ -7,12 +7,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jmeiracorbal/gtk-ai/internal/filtermanifest"
+	"github.com/jmeiracorbal/gtk-ai/internal/pluginmanifest"
 )
 
 func TestValidateGtkaiCoreVersionMinPass(t *testing.T) {
-	m := &filtermanifest.Manifest{
-		GtkaiCoreVersion: filtermanifest.GtkaiCoreVersion{
+	m := &pluginmanifest.Manifest{
+		GtkaiCoreVersion: pluginmanifest.GtkaiCoreVersion{
 			Version:    "0.10.0",
 			Constraint: "min",
 		},
@@ -26,8 +26,8 @@ func TestValidateGtkaiCoreVersionMinPass(t *testing.T) {
 }
 
 func TestValidateGtkaiCoreVersionMinFail(t *testing.T) {
-	m := &filtermanifest.Manifest{
-		GtkaiCoreVersion: filtermanifest.GtkaiCoreVersion{
+	m := &pluginmanifest.Manifest{
+		GtkaiCoreVersion: pluginmanifest.GtkaiCoreVersion{
 			Version:    "0.10.0",
 			Constraint: "min",
 		},
@@ -42,8 +42,8 @@ func TestValidateGtkaiCoreVersionMinFail(t *testing.T) {
 }
 
 func TestValidateGtkaiCoreVersionExactPass(t *testing.T) {
-	m := &filtermanifest.Manifest{
-		GtkaiCoreVersion: filtermanifest.GtkaiCoreVersion{
+	m := &pluginmanifest.Manifest{
+		GtkaiCoreVersion: pluginmanifest.GtkaiCoreVersion{
 			Version:    "0.10.0",
 			Constraint: "exact",
 		},
@@ -54,8 +54,8 @@ func TestValidateGtkaiCoreVersionExactPass(t *testing.T) {
 }
 
 func TestValidateGtkaiCoreVersionExactFail(t *testing.T) {
-	m := &filtermanifest.Manifest{
-		GtkaiCoreVersion: filtermanifest.GtkaiCoreVersion{
+	m := &pluginmanifest.Manifest{
+		GtkaiCoreVersion: pluginmanifest.GtkaiCoreVersion{
 			Version:    "0.10.0",
 			Constraint: "exact",
 		},
@@ -70,8 +70,8 @@ func TestValidateGtkaiCoreVersionExactFail(t *testing.T) {
 }
 
 func TestValidateGtkaiCoreVersionUnknownConstraint(t *testing.T) {
-	m := &filtermanifest.Manifest{
-		GtkaiCoreVersion: filtermanifest.GtkaiCoreVersion{
+	m := &pluginmanifest.Manifest{
+		GtkaiCoreVersion: pluginmanifest.GtkaiCoreVersion{
 			Version:    "0.10.0",
 			Constraint: "latest",
 		},
@@ -86,11 +86,11 @@ func TestValidateGtkaiCoreVersionUnknownConstraint(t *testing.T) {
 }
 
 func TestValidateCommandEmpty(t *testing.T) {
-	m := &filtermanifest.Manifest{
+	m := &pluginmanifest.Manifest{
 		ID:       "gtk-ai/date",
 		Command:  "",
 		Contract: "subprocess/v1",
-		GtkaiCoreVersion: filtermanifest.GtkaiCoreVersion{
+		GtkaiCoreVersion: pluginmanifest.GtkaiCoreVersion{
 			Version:    "0.11.0",
 			Constraint: "min",
 		},
@@ -106,8 +106,8 @@ func TestValidateCommandEmpty(t *testing.T) {
 }
 
 func TestValidateGtkaiCoreVersionMinPrereleaseBase(t *testing.T) {
-	m := &filtermanifest.Manifest{
-		GtkaiCoreVersion: filtermanifest.GtkaiCoreVersion{
+	m := &pluginmanifest.Manifest{
+		GtkaiCoreVersion: pluginmanifest.GtkaiCoreVersion{
 			Version:    "0.11.0",
 			Constraint: "min",
 		},
@@ -118,8 +118,8 @@ func TestValidateGtkaiCoreVersionMinPrereleaseBase(t *testing.T) {
 }
 
 func TestValidateGtkaiCoreVersionMinPrereleaseBelowBase(t *testing.T) {
-	m := &filtermanifest.Manifest{
-		GtkaiCoreVersion: filtermanifest.GtkaiCoreVersion{
+	m := &pluginmanifest.Manifest{
+		GtkaiCoreVersion: pluginmanifest.GtkaiCoreVersion{
 			Version:    "0.11.0",
 			Constraint: "min",
 		},
@@ -135,7 +135,7 @@ func TestParseGtkaiDateManifest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	m, err := filtermanifest.ParseFile(dir + "/gtkai.json")
+	m, err := pluginmanifest.ParseFile(dir + "/gtkai.json")
 	if err != nil {
 		t.Fatal(err)
 	}

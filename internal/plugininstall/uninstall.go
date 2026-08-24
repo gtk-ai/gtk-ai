@@ -1,19 +1,19 @@
-package filterinstall
+package plugininstall
 
 import (
 	"fmt"
 	"os"
 	"path/filepath"
 
-	"github.com/jmeiracorbal/gtk-ai/internal/filterregistry"
+	"github.com/jmeiracorbal/gtk-ai/internal/pluginregistry"
 )
 
 // Uninstall removes a filter by full id and deletes its install directory.
-func Uninstall(id string) (*filterregistry.Record, error) {
+func Uninstall(id string) (*pluginregistry.Record, error) {
 	if id == "" {
 		return nil, fmt.Errorf("id is empty")
 	}
-	db, err := filterregistry.Open()
+	db, err := pluginregistry.Open()
 	if err != nil {
 		return nil, err
 	}

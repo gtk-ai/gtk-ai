@@ -10,7 +10,7 @@ import (
 
 	"github.com/jmeiracorbal/gtk-ai/internal/registry"
 	"github.com/jmeiracorbal/gtk-ai/internal/text"
-	readmod "github.com/jmeiracorbal/gtk-ai/modules/read"
+	readmod "github.com/jmeiracorbal/gtk-ai/plugins/read"
 )
 
 // ── Input structures ──────────────────────────────────────────────────────────
