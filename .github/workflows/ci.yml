@@ -46,7 +46,7 @@ jobs:
           }
           check ".claude-plugin/marketplace.json"   "$(jq -r '.plugins[0].version' .claude-plugin/marketplace.json)"
           check ".claude-plugin/plugin.json"        "$(jq -r '.version' .claude-plugin/plugin.json)"
-          check "plugin/.claude-plugin/plugin.json" "$(jq -r '.version' plugin/.claude-plugin/plugin.json)"
+          check "integrations/claude/.claude-plugin/plugin.json" "$(jq -r '.version' integrations/claude/.claude-plugin/plugin.json)"
           check "plugins/mcpscan/mcpscan.go"        "$(sed -n 's/.*"version": "\([^"]*\)".*/\1/p' plugins/mcpscan/mcpscan.go | head -1)"
           exit $failed
 
@@ -54,11 +54,11 @@ jobs:
         run: |
           for field in name author license repository homepage; do
             root=$(jq -r ".${field} // .${field}.name // empty" .claude-plugin/plugin.json 2>/dev/null)
-            plugin=$(jq -r ".${field} // .${field}.name // empty" plugin/.claude-plugin/plugin.json 2>/dev/null)
+            plugin=$(jq -r ".${field} // .${field}.name // empty" integrations/claude/.claude-plugin/plugin.json 2>/dev/null)
             if [ "$root" != "$plugin" ]; then
               echo "manifest drift: field '${field}' differs"
-              echo "  .claude-plugin/plugin.json:        ${root}"
-              echo "  plugin/.claude-plugin/plugin.json: ${plugin}"
+              echo "  .claude-plugin/plugin.json:                        ${root}"
+              echo "  integrations/claude/.claude-plugin/plugin.json:    ${plugin}"
               exit 1
             fi
           done
@@ -68,8 +68,8 @@ jobs:
         run: |
           failed=0
           for f in \
-            plugin/scripts/gtkai-post-tool-use.sh \
-            plugin/scripts/gtkai-pre-tool-use.sh \
+            integrations/claude/scripts/gtkai-post-tool-use.sh \
+            integrations/claude/scripts/gtkai-pre-tool-use.sh \
             scripts/cursor/hooks/gtkai-pre-tool-use.sh \
             scripts/cursor/hooks/gtkai-post-tool-use.sh \
             scripts/codex/hooks/gtkai-pre-tool-use.sh
