@@ -32,7 +32,7 @@ if [ -n "${GTKAI_CLAUDE_ONLY:-}" ] && [ -z "${GTKAI_AGENT:-}" ]; then
   AGENT=claudecode
 fi
 TMP_DIR=$(mktemp -d)
-TMP_SCRIPTS=""
+TMP_ROOT=""
 GTKAI_BIN=""
 
 RED='\033[0;31m'
@@ -223,8 +223,8 @@ else
       go build -o "$INSTALL_DIR/$BINARY" ./cmd/gtkai/
       cd - >/dev/null
       success "Built from source"
-      if [ -d "$TMP_DIR/gtk-ai/scripts/cursor/hooks" ]; then
-        TMP_SCRIPTS="$TMP_DIR/gtk-ai/scripts"
+      if [ -d "$TMP_DIR/gtk-ai/integrations/cursor/hooks" ]; then
+        TMP_ROOT="$TMP_DIR/gtk-ai"
       fi
     fi
   fi
@@ -261,15 +261,15 @@ else
 fi
 
 resolve_scripts() {
-  if [ -n "$TMP_SCRIPTS" ]; then
+  if [ -n "$TMP_ROOT" ]; then
     return
   fi
   if [ -n "${GTKAI_SCRIPTS_DIR:-}" ]; then
-    TMP_SCRIPTS="$GTKAI_SCRIPTS_DIR"
+    TMP_ROOT="$GTKAI_SCRIPTS_DIR"
     return
   fi
-  if [ -f "$0" ] && [ -d "$(dirname "$0")/scripts/cursor/hooks" ]; then
-    TMP_SCRIPTS="$(cd "$(dirname "$0")" && pwd)/scripts"
+  if [ -f "$0" ] && [ -d "$(dirname "$0")/integrations/cursor/hooks" ]; then
+    TMP_ROOT="$(cd "$(dirname "$0")" && pwd)"
     return
   fi
 
@@ -291,8 +291,8 @@ resolve_scripts() {
     if [ "$actual" != "$expected" ]; then
       error "Scripts checksum mismatch. Expected: $expected  Got: $actual"
     fi
-    TMP_SCRIPTS=$(mktemp -d)
-    tar -xzf "$tmp_archive" -C "$TMP_SCRIPTS" --strip-components=1
+    TMP_ROOT=$(mktemp -d)
+    tar -xzf "$tmp_archive" -C "$TMP_ROOT"
     rm -f "$tmp_archive"
     success "Scripts ready"
     return
@@ -300,7 +300,7 @@ resolve_scripts() {
 
   info "No scripts archive in the latest release — cloning repository"
   git clone --depth 1 "https://github.com/$REPO.git" "$TMP_DIR/gtk-ai-scripts" >/dev/null 2>&1
-  TMP_SCRIPTS="$TMP_DIR/gtk-ai-scripts/scripts"
+  TMP_ROOT="$TMP_DIR/gtk-ai-scripts"
 }
 
 setup_claudecode() {
@@ -341,7 +341,7 @@ setup_claudecode() {
   result=$(json_merge "$(printf '{"gtk-ai":{"source":{"source":"github","repo":"jmeiracorbal/gtk-ai"},"installLocation":"%s","lastUpdated":"%s"}}' "$MARKETPLACE_DIR" "$NOW")" "$KNOWN_MARKETPLACES")
   success "$HOME/.claude/plugins/known_marketplaces.json — $result"
 
-  cp "$TMP_SCRIPTS/claudecode/gtk-ai.md" "$PROTOCOL_DOC"
+  cp "$TMP_ROOT/scripts/claudecode/gtk-ai.md" "$PROTOCOL_DOC"
   success "$HOME/.claude/gtk-ai.md written"
 
   if [ -f "$CLAUDE_MD" ]; then
@@ -369,8 +369,8 @@ setup_cursor() {
   rules_dir="$HOME/.cursor/rules"
 
   mkdir -p "$hooks_dir" "$rules_dir"
-  cp "$TMP_SCRIPTS/cursor/hooks/gtkai-pre-tool-use.sh" "$hooks_dir/"
-  cp "$TMP_SCRIPTS/cursor/hooks/gtkai-post-tool-use.sh" "$hooks_dir/"
+  cp "$TMP_ROOT/integrations/cursor/hooks/gtkai-pre-tool-use.sh" "$hooks_dir/"
+  cp "$TMP_ROOT/integrations/cursor/hooks/gtkai-post-tool-use.sh" "$hooks_dir/"
   chmod +x "$hooks_dir/gtkai-pre-tool-use.sh" "$hooks_dir/gtkai-post-tool-use.sh"
   success "Hook scripts installed to ${hooks_dir}"
 
@@ -378,7 +378,7 @@ setup_cursor() {
   result=$(json_merge "$patch" "$hooks_json")
   success "$HOME/.cursor/hooks.json — $result"
 
-  cp "$TMP_SCRIPTS/cursor/rules/gtk-ai.mdc" "$rules_dir/gtk-ai.mdc"
+  cp "$TMP_ROOT/integrations/cursor/rules/gtk-ai.mdc" "$rules_dir/gtk-ai.mdc"
   success "$HOME/.cursor/rules/gtk-ai.mdc written"
 }
 
@@ -391,7 +391,7 @@ setup_codex() {
   agents_md="$HOME/.codex/AGENTS.md"
 
   mkdir -p "$hooks_dir"
-  cp "$TMP_SCRIPTS/codex/hooks/gtkai-pre-tool-use.sh" "$hooks_dir/"
+  cp "$TMP_ROOT/integrations/codex/hooks/gtkai-pre-tool-use.sh" "$hooks_dir/"
   chmod +x "$hooks_dir/gtkai-pre-tool-use.sh"
   success "Hook scripts installed to ${hooks_dir}"
 
@@ -414,7 +414,7 @@ setup_codex() {
     success "$HOME/.codex/config.toml — enabled [features].codex_hooks"
   fi
 
-  append_marked_block "$agents_md" "$TMP_SCRIPTS/codex/AGENTS.md"
+  append_marked_block "$agents_md" "$TMP_ROOT/integrations/codex/AGENTS.md"
 }
 
 setup_opencode() {
@@ -424,10 +424,10 @@ setup_opencode() {
   agents_md="$HOME/.config/opencode/AGENTS.md"
 
   mkdir -p "$plugins_dir"
-  cp "$TMP_SCRIPTS/opencode/plugins/gtkai.ts" "$plugins_dir/"
+  cp "$TMP_ROOT/integrations/opencode/plugins/gtkai.ts" "$plugins_dir/"
   success "Plugin installed to ${plugins_dir}"
 
-  append_marked_block "$agents_md" "$TMP_SCRIPTS/opencode/AGENTS.md"
+  append_marked_block "$agents_md" "$TMP_ROOT/integrations/opencode/AGENTS.md"
 }
 
 agent_detected() {
