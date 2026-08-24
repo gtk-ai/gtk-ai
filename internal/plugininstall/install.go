@@ -66,7 +66,7 @@ func Install(opts Options) (*pluginregistry.Record, error) {
 	if err := manifest.Validate(opts.CoreVersion, platform); err != nil {
 		return nil, err
 	}
-	if err := pluginsubprocess.LivenessCheck(binary); err != nil {
+	if err := pluginsubprocess.ContractCheck(binary); err != nil {
 		return nil, fmt.Errorf("liveness: %w", err)
 	}
 
