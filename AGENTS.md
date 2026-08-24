@@ -18,7 +18,7 @@ When changing the version, update every file that exposes it:
 - `cmd/gtkai/main.go`
 - `.claude-plugin/plugin.json`
 - `.claude-plugin/marketplace.json`
-- `plugin/.claude-plugin/plugin.json`
+- `integrations/claude/.claude-plugin/plugin.json`
 - `plugins/mcpscan/mcpscan.go`
 - `README.md`
 
@@ -49,6 +49,17 @@ External plugins are binaries that implement the `registry.Module` interface via
 | `pluginmanifest` | Parses and validates `gtkai.json` plugin manifests |
 
 Built-in plugins in `plugins/` are compiled into the binary and registered via `init()`. External plugins from the marketplace are subprocess-based (JSON protocol). Both implement `registry.Module` — the proxy treats them identically.
+
+## Post-merge <!-- post-merge-workflow -->
+
+After merging a PR:
+
+1. Switch to `main` locally and pull.
+2. Run `go test ./...` — or the test most relevant to the change.
+   - If a gap appears: open a new branch, fix it, push and open a PR.
+3. If all green: bump the version in every file listed under **Versions**.
+4. Update documentation if the change affects user-facing behavior.
+5. Push a new git tag matching the version (`git tag vX.Y.Z && git push origin vX.Y.Z`).
 
 ## Before committing
 
