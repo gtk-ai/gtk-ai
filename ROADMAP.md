@@ -176,7 +176,7 @@ On **install**, when another filter already targets the same command:
 - With `--replace`, the newly installed filter becomes active; the previous filter stays installed but inactive.
 - `install-marketplace` applies `--replace` implicitly.
 
-On **uninstall** (`gtkai filter uninstall author/<cmd>` — full id only):
+On **uninstall** (`gtkai plugin uninstall author/<cmd>` — full id only):
 
 - Remove that filter by `id`.
 - If **no filters remain** for that shell command → do not rewrite it in PreToolUse; pass through.
@@ -187,9 +187,9 @@ Listing installed filters and which one is active per command is part of this ph
 ### CLI (sketch)
 
 ```text
-gtkai filter install <path-or-package> [--replace]   # abort on command conflict unless --replace
-gtkai filter uninstall gtk-ai/ls   # by full id only
-gtkai filter list                        # all filters; mark active per command
+gtkai plugin install <path-or-package> [--replace]   # abort on command conflict unless --replace
+gtkai plugin uninstall gtk-ai/ls   # by full id only
+gtkai plugin list                        # all filters; mark active per command
 ```
 
 Exact transport (Go package, manifest + subprocess, …) is an implementation detail. The rules above are not.

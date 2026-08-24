@@ -17,11 +17,11 @@ func TestFilterUninstallCLI(t *testing.T) {
 	_ = home
 
 	bin := buildBinary(t)
-	cmd := exec.Command(bin, "filter", "uninstall", "gtk-ai/date")
+	cmd := exec.Command(bin, "plugin", "uninstall", "gtk-ai/date")
 	cmd.Env = os.Environ()
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("filter uninstall: %v\n%s", err, out)
+		t.Fatalf("plugin uninstall: %v\n%s", err, out)
 	}
 	if !strings.Contains(string(out), "uninstalled gtk-ai/date") {
 		t.Fatalf("unexpected output: %s", out)
@@ -33,7 +33,7 @@ func TestFilterListMarksActive(t *testing.T) {
 	_ = home
 
 	bin := buildBinary(t)
-	cmd := exec.Command(bin, "filter", "list")
+	cmd := exec.Command(bin, "plugin", "list")
 	cmd.Env = os.Environ()
 	out, err := cmd.Output()
 	if err != nil {
@@ -41,7 +41,7 @@ func TestFilterListMarksActive(t *testing.T) {
 	}
 	text := string(out)
 	if !strings.Contains(text, "gtk-ai/date") {
-		t.Fatalf("expected filter in list: %s", text)
+		t.Fatalf("expected plugin in list: %s", text)
 	}
 	if !strings.Contains(text, "active") {
 		t.Fatalf("expected active marker in list: %s", text)

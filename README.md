@@ -68,7 +68,7 @@ Claude Code still needs the plugin after the marketplace is registered:
 claude plugin install -s user gtk-ai@gtk-ai
 ```
 
-The install script also runs `gtkai filter install-marketplace` for the entries listed in `marketplace.json` (currently `gtk-ai/date`).
+The install script also runs `gtkai plugin install-marketplace` for the entries listed in `marketplace.json` (currently `gtk-ai/date`).
 
 Then restart the agent.
 
@@ -118,11 +118,11 @@ Command filters ship as standalone repos (for example `github.com/gtk-ai/date`).
 ### External filter commands
 
 ```bash
-gtkai filter install github.com/gtk-ai/date@v0.12.0
-gtkai filter install github.com/gtk-ai/date@v0.12.0 --replace
-gtkai filter install-marketplace marketplace.json --core-version=0.11.0-beta.4
-gtkai filter list
-gtkai filter uninstall gtk-ai/date
+gtkai plugin install github.com/gtk-ai/date@v0.12.0
+gtkai plugin install github.com/gtk-ai/date@v0.12.0 --replace
+gtkai plugin install-marketplace marketplace.json --core-version=0.11.0-beta.4
+gtkai plugin list
+gtkai plugin uninstall gtk-ai/date
 ```
 
 | Command | Description |
@@ -130,7 +130,7 @@ gtkai filter uninstall gtk-ai/date
 | `filter install <module@version>` | Download, validate `gtkai.json`, build, register in `~/.gtk-ai/plugins.db` |
 | `filter install … --replace` | Required when another filter is already **active** for the same shell command |
 | `filter install-marketplace <file>` | Install every entry in `marketplace.json` (`install.sh` uses this; `--replace` is implicit) |
-| `filter list` | List installed filters; marks the active one per command |
+| `filter list` | List installed plugins; marks the active one per command |
 | `filter uninstall <id>` | Remove by full id (e.g. `gtk-ai/date`); deletes `~/.gtk-ai/filters/<id>/` |
 
 **Conflict policy:** if filter `acme/date` is active for `date`, installing `gtk-ai/date` aborts unless you pass `--replace`. With `--replace`, the new filter becomes active; the previous one stays installed but inactive (not deleted). To remove it: `filter uninstall acme/date`. To switch back: reinstall the other filter with `--replace`.
@@ -195,10 +195,10 @@ gtkai json-merge <file>          Deep-merge JSON from stdin into an agent config
 gtkai git status                 Proxy: run a registered command through gtkai
 gtkai mcp-scan                   List MCP server tools, suggest passthrough prefixes
 gtkai gain                       Token savings analytics
-gtkai filter install <mod@ver> [--replace]  Install an external filter module
-gtkai filter install-marketplace <file> --core-version=<ver>  Install marketplace entries
-gtkai filter uninstall <id>      Remove an installed filter by full id
-gtkai filter list                List installed filters (active marked)
+gtkai plugin install <mod@ver> [--replace]  Install an external plugin
+gtkai plugin install-marketplace <file> --core-version=<ver>  Install marketplace entries
+gtkai plugin uninstall <id>      Remove an installed filter by full id
+gtkai plugin list                List installed plugins (active marked)
 gtkai version                    Print version
 ```
 
