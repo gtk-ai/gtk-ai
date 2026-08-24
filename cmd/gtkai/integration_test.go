@@ -5,13 +5,17 @@
 package main_test
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/jmeiracorbal/gtk-ai/internal/plugininstall"
+	"github.com/jmeiracorbal/gtk-ai/internal/pluginmanifest"
 	"github.com/jmeiracorbal/gtk-ai/internal/testhome"
 )
 
@@ -161,12 +165,90 @@ func TestIntegrationLs(t *testing.T) {
 	}
 }
 
-// installMarketplaceFilters installs entries from marketplace.json into HOME.
-func installMarketplaceFilters(t *testing.T) string {
+// datePluginSrc is a minimal stdin/v1 date plugin for integration tests.
+// It converts date output to ISO-8601 or unix timestamp depending on args.
+const datePluginSrc = `package main
+
+import (
+	"encoding/json"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+)
+
+func main() {
+	var req struct {
+		Operation string   ` + "`" + `json:"operation"` + "`" + `
+		Args      []string ` + "`" + `json:"args"` + "`" + `
+		Output    string   ` + "`" + `json:"output"` + "`" + `
+		ExitCode  int      ` + "`" + `json:"exit_code"` + "`" + `
+	}
+	if err := json.NewDecoder(os.Stdin).Decode(&req); err != nil {
+		os.Exit(1)
+	}
+	out := req.Output
+	if req.Operation == "filter_output" {
+		wantsTimestamp := false
+		for _, a := range req.Args {
+			if strings.Contains(a, "%s") {
+				wantsTimestamp = true
+				break
+			}
+		}
+		if wantsTimestamp {
+			out = strconv.FormatInt(time.Now().Unix(), 10)
+		} else {
+			out = time.Now().UTC().Format(time.RFC3339)
+		}
+	}
+	json.NewEncoder(os.Stdout).Encode(map[string]interface{}{
+		"args":    req.Args,
+		"changed": false,
+		"output":  out,
+	})
+}
+`
+
+// installTestDatePlugin builds and installs a local date plugin for integration tests.
+func installTestDatePlugin(t *testing.T) string {
 	t.Helper()
 	home := testhome.Isolated(t)
-	catalog := filepath.Join(moduleRoot(t), "marketplace.json")
-	if _, err := plugininstall.InstallMarketplace(catalog, "0.11.0-beta.2", ""); err != nil {
+
+	dir := t.TempDir()
+	srcFile := filepath.Join(dir, "main.go")
+	if err := os.WriteFile(srcFile, []byte(datePluginSrc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	binPath := filepath.Join(dir, "date")
+	out, err := exec.Command("go", "build", "-o", binPath, srcFile).CombinedOutput()
+	if err != nil {
+		t.Fatalf("build date plugin: %v\n%s", err, out)
+	}
+
+	manifest := pluginmanifest.Manifest{
+		ID:       "gtk-ai/date",
+		Command:  "date",
+		Contract: "stdin/v1",
+		Platforms: []string{
+			fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
+		},
+		GtkaiCoreVersion: pluginmanifest.GtkaiCoreVersion{
+			Version:    "0.1.0",
+			Constraint: "min",
+		},
+	}
+	manifestData, _ := json.Marshal(manifest)
+	if err := os.WriteFile(filepath.Join(dir, pluginmanifest.ManifestFileName), manifestData, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := plugininstall.Install(plugininstall.Options{
+		Module:      "github.com/gtk-ai/date",
+		Version:     "v0.2.0",
+		CoreVersion: "0.11.0",
+		LocalDir:    dir,
+	}); err != nil {
 		t.Fatal(err)
 	}
 	return home
@@ -181,7 +263,7 @@ func TestIntegrationDateWithoutFilter(t *testing.T) {
 }
 
 func TestIntegrationDate(t *testing.T) {
-	home := installMarketplaceFilters(t)
+	home := installTestDatePlugin(t)
 	bin := buildBinary(t)
 	dir := t.TempDir()
 
@@ -201,7 +283,7 @@ func TestIntegrationDate(t *testing.T) {
 }
 
 func TestIntegrationDateWithFormat(t *testing.T) {
-	home := installMarketplaceFilters(t)
+	home := installTestDatePlugin(t)
 	bin := buildBinary(t)
 	dir := t.TempDir()
 
@@ -241,7 +323,7 @@ func TestIntegrationVersion(t *testing.T) {
 // para el comando date: el binario compilado lee un payload JSON y produce
 // el JSON de reescritura correcto.
 func TestIntegrationHookPreDate(t *testing.T) {
-	home := installMarketplaceFilters(t)
+	home := installTestDatePlugin(t)
 	bin := buildBinary(t)
 	payload := `{"tool_name":"Bash","tool_input":{"command":"date"}}`
 

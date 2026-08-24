@@ -2,17 +2,87 @@ package plugininstall_test
 
 import (
 	"bytes"
+	"encoding/json"
+	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/jmeiracorbal/gtk-ai/internal/plugininstall"
+	"github.com/jmeiracorbal/gtk-ai/internal/pluginmanifest"
 	"github.com/jmeiracorbal/gtk-ai/internal/pluginregistry"
 	"github.com/jmeiracorbal/gtk-ai/internal/testhome"
 )
+
+// minimalPluginSrc is a stdin/v1 compliant binary for tests.
+const minimalPluginSrc = `package main
+
+import (
+	"encoding/json"
+	"os"
+)
+
+func main() {
+	var req struct {
+		Operation string   ` + "`" + `json:"operation"` + "`" + `
+		Args      []string ` + "`" + `json:"args"` + "`" + `
+		Output    string   ` + "`" + `json:"output"` + "`" + `
+		ExitCode  int      ` + "`" + `json:"exit_code"` + "`" + `
+	}
+	if err := json.NewDecoder(os.Stdin).Decode(&req); err != nil {
+		os.Exit(1)
+	}
+	resp := map[string]interface{}{
+		"args":    req.Args,
+		"changed": false,
+		"output":  req.Output,
+	}
+	json.NewEncoder(os.Stdout).Encode(resp)
+}
+`
+
+// buildLocalPlugin compiles a stub binary and writes gtkai.json to dir,
+// returning the dir path so it can be passed as Options.LocalDir.
+func buildLocalPlugin(t *testing.T, id, argv0 string) string {
+	t.Helper()
+	dir := t.TempDir()
+
+	srcFile := filepath.Join(dir, "main.go")
+	if err := os.WriteFile(srcFile, []byte(minimalPluginSrc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	binName := filepath.Base(id)
+	binPath := filepath.Join(dir, binName)
+	out, err := exec.Command("go", "build", "-o", binPath, srcFile).CombinedOutput()
+	if err != nil {
+		t.Fatalf("build stub %s: %v\n%s", id, err, out)
+	}
+
+	manifest := pluginmanifest.Manifest{
+		ID:       id,
+		Command:  argv0,
+		Contract: "stdin/v1",
+		Platforms: []string{
+			fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
+		},
+		GtkaiCoreVersion: pluginmanifest.GtkaiCoreVersion{
+			Version:    "0.1.0",
+			Constraint: "min",
+		},
+	}
+	data, err := json.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, pluginmanifest.ManifestFileName), data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
 
 func captureStderr(t *testing.T, fn func()) string {
 	t.Helper()
@@ -34,31 +104,27 @@ func captureStderr(t *testing.T, fn func()) string {
 }
 
 func TestInstallConflictAbortsWithoutReplace(t *testing.T) {
-	home := testhome.Isolated(t)
+	testhome.Isolated(t)
 
-	db, err := pluginregistry.Open()
+	// Install first plugin for argv0 "date".
+	localDir := buildLocalPlugin(t, "acme/date", "date")
+	_, err := plugininstall.Install(plugininstall.Options{
+		Module:      "github.com/acme/date",
+		Version:     "v0.1.0",
+		CoreVersion: "0.11.0",
+		LocalDir:    localDir,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	existing := pluginregistry.Record{
-		ID:           "acme/date",
-		Module:       "github.com/acme/date",
-		Version:      "v0.1.0",
-		Argv0:        "date",
-		Contract:     "subprocess/v1",
-		BinaryPath:   filepath.Join(home, ".gtk-ai/filters/acme/date/date"),
-		ManifestPath: filepath.Join(home, ".gtk-ai/filters/acme/date/gtkai.json"),
-		InstalledAt:  time.Now().Add(-time.Hour),
-	}
-	if err := db.Install(existing); err != nil {
-		t.Fatal(err)
-	}
-	db.Close()
 
+	// Attempt to install a second plugin for the same argv0 without --replace.
+	localDir2 := buildLocalPlugin(t, "gtk-ai/date", "date")
 	_, err = plugininstall.Install(plugininstall.Options{
 		Module:      "github.com/gtk-ai/date",
-		Version:     "v0.12.0",
+		Version:     "v0.2.0",
 		CoreVersion: "0.11.0",
+		LocalDir:    localDir2,
 	})
 	if err == nil {
 		t.Fatal("expected install to abort without --replace")
@@ -67,7 +133,7 @@ func TestInstallConflictAbortsWithoutReplace(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	db, err = pluginregistry.Open()
+	db, err := pluginregistry.Open()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,32 +148,25 @@ func TestInstallConflictAbortsWithoutReplace(t *testing.T) {
 }
 
 func TestInstallConflictWithReplace(t *testing.T) {
-	home := testhome.Isolated(t)
+	testhome.Isolated(t)
 
-	db, err := pluginregistry.Open()
-	if err != nil {
+	localDir := buildLocalPlugin(t, "acme/date", "date")
+	if _, err := plugininstall.Install(plugininstall.Options{
+		Module:      "github.com/acme/date",
+		Version:     "v0.1.0",
+		CoreVersion: "0.11.0",
+		LocalDir:    localDir,
+	}); err != nil {
 		t.Fatal(err)
 	}
-	existing := pluginregistry.Record{
-		ID:           "acme/date",
-		Module:       "github.com/acme/date",
-		Version:      "v0.1.0",
-		Argv0:        "date",
-		Contract:     "subprocess/v1",
-		BinaryPath:   filepath.Join(home, ".gtk-ai/filters/acme/date/date"),
-		ManifestPath: filepath.Join(home, ".gtk-ai/filters/acme/date/gtkai.json"),
-		InstalledAt:  time.Now().Add(-time.Hour),
-	}
-	if err := db.Install(existing); err != nil {
-		t.Fatal(err)
-	}
-	db.Close()
 
+	localDir2 := buildLocalPlugin(t, "gtk-ai/date", "date")
 	stderr := captureStderr(t, func() {
 		if _, err := plugininstall.Install(plugininstall.Options{
 			Module:      "github.com/gtk-ai/date",
-			Version:     "v0.12.0",
+			Version:     "v0.2.0",
 			CoreVersion: "0.11.0",
+			LocalDir:    localDir2,
 			Replace:     true,
 		}); err != nil {
 			t.Fatal(err)
@@ -117,7 +176,7 @@ func TestInstallConflictWithReplace(t *testing.T) {
 		t.Fatalf("expected replace notice on stderr, got %q", stderr)
 	}
 
-	db, err = pluginregistry.Open()
+	db, err := pluginregistry.Open()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,10 +200,12 @@ func TestInstallConflictWithReplace(t *testing.T) {
 func TestUninstallRemovesInstallDir(t *testing.T) {
 	testhome.Isolated(t)
 
+	localDir := buildLocalPlugin(t, "gtk-ai/date", "date")
 	rec, err := plugininstall.Install(plugininstall.Options{
 		Module:      "github.com/gtk-ai/date",
-		Version:     "v0.12.0",
+		Version:     "v0.2.0",
 		CoreVersion: "0.11.0",
+		LocalDir:    localDir,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -180,41 +241,36 @@ func TestUninstallRemovesInstallDir(t *testing.T) {
 }
 
 func TestUninstallPromotesPreviousFilter(t *testing.T) {
-	home := testhome.Isolated(t)
+	testhome.Isolated(t)
 
-	db, err := pluginregistry.Open()
+	olderDir := buildLocalPlugin(t, "acme/date", "date")
+	older, err := plugininstall.Install(plugininstall.Options{
+		Module:      "github.com/acme/date",
+		Version:     "v0.1.0",
+		CoreVersion: "0.11.0",
+		LocalDir:    olderDir,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	older := pluginregistry.Record{
-		ID:           "acme/date",
-		Module:       "github.com/acme/date",
-		Version:      "v0.1.0",
-		Argv0:        "date",
-		Contract:     "subprocess/v1",
-		BinaryPath:   filepath.Join(home, ".gtk-ai/filters/acme/date/date"),
-		ManifestPath: filepath.Join(home, ".gtk-ai/filters/acme/date/gtkai.json"),
-		InstalledAt:  time.Now().Add(-time.Hour),
-	}
-	if err := db.Install(older); err != nil {
-		t.Fatal(err)
-	}
-	db.Close()
 
+	newerDir := buildLocalPlugin(t, "gtk-ai/date", "date")
 	newer, err := plugininstall.Install(plugininstall.Options{
 		Module:      "github.com/gtk-ai/date",
-		Version:     "v0.12.0",
+		Version:     "v0.2.0",
 		CoreVersion: "0.11.0",
+		LocalDir:    newerDir,
 		Replace:     true,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if _, err := plugininstall.Uninstall(newer.ID); err != nil {
 		t.Fatal(err)
 	}
 
-	db, err = pluginregistry.Open()
+	db, err := pluginregistry.Open()
 	if err != nil {
 		t.Fatal(err)
 	}
