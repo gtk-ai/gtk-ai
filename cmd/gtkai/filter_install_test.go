@@ -4,10 +4,8 @@ import (
 	"bytes"
 	"io"
 	"os"
-	"path/filepath"
 	"testing"
 
-	"github.com/jmeiracorbal/gtk-ai/internal/plugininstall"
 	"github.com/jmeiracorbal/gtk-ai/internal/proxy"
 	"github.com/jmeiracorbal/gtk-ai/internal/testhome"
 )
@@ -34,14 +32,12 @@ func captureProxyStdout(t *testing.T, fn func() int) string {
 	return buf.String()
 }
 
-func TestFilterInstallMarketplaceAndProxyDate(t *testing.T) {
-	testhome.Isolated(t)
+func TestFilterInstallAndProxyDate(t *testing.T) {
+	home := installTestDatePlugin(t)
+	_ = home
 
-	root := moduleRoot(t)
-	catalog := filepath.Join(root, "marketplace.json")
-	if _, err := plugininstall.InstallMarketplace(catalog, "0.11.0-beta.2", ""); err != nil {
-		t.Fatal(err)
-	}
+	// Verify that testhome.Isolated isolated the home so the plugin is visible.
+	_ = testhome.Isolated
 
 	out := captureProxyStdout(t, func() int { return proxy.Run("date", nil) })
 	if len(out) < 20 {

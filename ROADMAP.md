@@ -320,3 +320,17 @@ Filtering stays heuristic. No semantic compression.
 6. Ecosystem commands as third-party filters according to `gain` (section 3 ecosystem).
 
 The git tag must match every version-bearing file (`cmd/gtkai/main.go`, plugin json, `mcpscan`, README).
+
+---
+
+## Future: alternative plugin protocols
+
+The current plugin protocol is subprocess/v1 — the core forks the plugin binary, sends a JSON request over stdin, and reads the JSON response from stdout. This is simple and works for stateless, low-frequency commands.
+
+Two alternatives are worth revisiting if requirements change:
+
+**WASM**: the plugin ships as a `.wasm` module instead of a native binary. The core loads it into an embedded runtime (e.g. `wazero`). No fork overhead; the module runs sandboxed without arbitrary syscall access. Makes sense if plugin startup latency becomes measurable or if untrusted third-party plugins are distributed. Requires authors to target `GOARCH=wasm GOOS=wasip1` (or equivalent for other languages) and the core to embed a WASM runtime.
+
+**gRPC**: the plugin runs as a persistent server and exposes an RPC interface. The core connects and calls methods instead of forking per invocation. Makes sense for stateful plugins (e.g. one that maintains an in-memory cache across calls) or for very high invocation frequency. Adds significant operational complexity: the plugin must manage its own lifecycle, and the core must handle connection failures and restarts.
+
+Neither is planned. The subprocess model covers all current use cases. Revisit only if `gain` data shows fork overhead is significant or if a stateful plugin use case appears.

@@ -13,6 +13,19 @@ import (
 
 var idRegex = regexp.MustCompile(`^[a-z0-9_-]+/[a-z0-9_-]+$`)
 
+// availableContracts lists the plugin communication protocols this version of gtkai supports.
+// Add new entries here when a new protocol (e.g. grpc/v1) is implemented.
+var availableContracts = []string{"stdin/v1"}
+
+func contractSupported(c string) bool {
+	for _, v := range availableContracts {
+		if v == c {
+			return true
+		}
+	}
+	return false
+}
+
 // Validate checks manifest fields, platform, and core version compatibility.
 func (m *Manifest) Validate(runningGtkai, platform string) error {
 	if !idRegex.MatchString(m.ID) {
@@ -21,8 +34,8 @@ func (m *Manifest) Validate(runningGtkai, platform string) error {
 	if strings.TrimSpace(m.Command) == "" {
 		return fmt.Errorf("command must not be empty")
 	}
-	if m.Contract != "subprocess/v1" {
-		return fmt.Errorf("contract must be subprocess/v1, got %q", m.Contract)
+	if !contractSupported(m.Contract) {
+		return fmt.Errorf("unsupported contract %q (supported: %s)", m.Contract, strings.Join(availableContracts, ", "))
 	}
 	if !semver.IsValid(normalizeSemver(m.GtkaiCoreVersion.Version)) {
 		return fmt.Errorf("gtkai-core-version.version %q is not valid semver", m.GtkaiCoreVersion.Version)
@@ -48,7 +61,7 @@ func platformListed(platforms []string, platform string) bool {
 // ManifestFileName is the required manifest filename at the root of a filter repository.
 const ManifestFileName = "gtkai.json"
 
-// Manifest is the required gtkai.json schema for subprocess/v1 filters.
+// Manifest is the required gtkai.json schema for external plugins.
 type Manifest struct {
 	ID               string           `json:"id"`
 	Command          string           `json:"command"`

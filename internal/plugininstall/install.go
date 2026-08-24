@@ -25,7 +25,8 @@ type Options struct {
 	Version     string
 	CoreVersion string
 	ReleaseRepo string
-	Replace     bool // allow replacing another active filter for the same argv0
+	Replace     bool   // allow replacing another active filter for the same argv0
+	LocalDir    string // if set, use this local directory instead of downloading or building
 }
 
 // ParseRef splits module@version. Both parts are required.
@@ -66,7 +67,7 @@ func Install(opts Options) (*pluginregistry.Record, error) {
 	if err := manifest.Validate(opts.CoreVersion, platform); err != nil {
 		return nil, err
 	}
-	if err := pluginsubprocess.LivenessCheck(binary); err != nil {
+	if err := pluginsubprocess.ContractCheck(binary); err != nil {
 		return nil, fmt.Errorf("liveness: %w", err)
 	}
 
@@ -130,6 +131,14 @@ func checkReplaceConflict(db *pluginregistry.DB, id, argv0 string, replace bool)
 }
 
 func resolveSource(opts Options, platform string) (srcDir, binary string, err error) {
+	if opts.LocalDir != "" {
+		binName := filepath.Base(opts.Module)
+		if binName == "" || binName == "." {
+			return "", "", fmt.Errorf("cannot derive binary name from module %q", opts.Module)
+		}
+		bin := filepath.Join(opts.LocalDir, binName)
+		return opts.LocalDir, bin, nil
+	}
 	if prebuilt, ok := tryPrebuilt(opts.Module, opts.Version, platform); ok {
 		srcDir, err = fetchGoModule(opts.Module, opts.Version)
 		if err != nil {

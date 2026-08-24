@@ -11,7 +11,7 @@ import (
 	"github.com/jmeiracorbal/gtk-ai/internal/registry"
 )
 
-const livenessTimeout = 500 * time.Millisecond
+const contractTimeout = 2 * time.Second
 
 type request struct {
 	Operation string   `json:"operation"`
@@ -78,23 +78,65 @@ func (m *Module) call(operation string, args []string, output string, exitCode i
 	return resp, nil
 }
 
-// LivenessCheck verifies the binary responds to rewrite within 500ms.
-func LivenessCheck(binaryPath string) error {
+// ContractCheck verifies the binary implements subprocess/v1 by probing both
+// rewrite and filter_output within the timeout. For filter_output it also
+// checks that the response includes the required "output" field.
+func ContractCheck(binaryPath string) error {
 	if binaryPath == "" {
 		return fmt.Errorf("binary path is empty")
 	}
-	done := make(chan error, 1)
-	go func() {
-		mod := NewModule("probe", binaryPath)
-		_, err := mod.call("rewrite", nil, "", 0)
-		done <- err
-	}()
-	select {
-	case err := <-done:
-		return err
-	case <-time.After(livenessTimeout):
-		return fmt.Errorf("liveness check exceeded %s", livenessTimeout)
+	if err := probeOperation(binaryPath, "rewrite", []string{"probe"}, "", 0, false); err != nil {
+		return fmt.Errorf("rewrite probe: %w", err)
 	}
+	if err := probeOperation(binaryPath, "filter_output", []string{"probe"}, "gtkai-contract-probe", 0, true); err != nil {
+		return fmt.Errorf("filter_output probe: %w", err)
+	}
+	return nil
+}
+
+func probeOperation(binaryPath, operation string, args []string, output string, exitCode int, requireOutputField bool) error {
+	type result struct {
+		raw []byte
+		err error
+	}
+	done := make(chan result, 1)
+	go func() {
+		req := request{Operation: operation, Args: args, Output: output, ExitCode: exitCode}
+		payload, err := json.Marshal(req)
+		if err != nil {
+			done <- result{err: err}
+			return
+		}
+		cmd := exec.Command(binaryPath)
+		cmd.Stdin = bytes.NewReader(payload)
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		if err := cmd.Run(); err != nil {
+			done <- result{err: fmt.Errorf("binary exited with error: %w", err)}
+			return
+		}
+		done <- result{raw: out.Bytes()}
+	}()
+
+	var res result
+	select {
+	case res = <-done:
+	case <-time.After(contractTimeout):
+		return fmt.Errorf("exceeded %s", contractTimeout)
+	}
+	if res.err != nil {
+		return res.err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(res.raw, &fields); err != nil {
+		return fmt.Errorf("invalid JSON response: %w", err)
+	}
+	if requireOutputField {
+		if _, ok := fields["output"]; !ok {
+			return fmt.Errorf("response missing required 'output' field")
+		}
+	}
+	return nil
 }
 
 // BinaryNameFromID derives the installed binary filename from a filter id.
