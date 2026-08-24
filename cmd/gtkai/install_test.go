@@ -40,7 +40,7 @@ func runInstall(t *testing.T, env []string, args ...string) (string, int) {
 //   - apunta HOME a un directorio temporal
 //   - apunta GTKAI_INSTALL_DIR a un directorio temporal con el binario ya compilado
 //   - usa GTKAI_SKIP_BINARY=1 para no intentar descargar nada de la red
-//   - usa GTKAI_SCRIPTS_DIR apuntando a scripts/ del repo local
+//   - usa GTKAI_SCRIPTS_DIR apuntando a la raíz del repo local
 func baseEnv(t *testing.T, home, installDir string) []string {
 	t.Helper()
 	bin := buildBinary(t)
@@ -53,13 +53,12 @@ func baseEnv(t *testing.T, home, installDir string) []string {
 	if err := os.WriteFile(dst, data, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	scriptsDir := filepath.Join(moduleRoot(t), "scripts")
 	return []string{
 		"HOME=" + home,
 		"GTKAI_INSTALL_DIR=" + installDir,
 		"GTKAI_SKIP_BINARY=1",
 		"GTKAI_SKIP_FILTERS=1",
-		"GTKAI_SCRIPTS_DIR=" + scriptsDir,
+		"GTKAI_SCRIPTS_DIR=" + moduleRoot(t),
 		"PATH=" + installDir + ":" + os.Getenv("PATH"),
 		"SHELL=/bin/sh",
 	}

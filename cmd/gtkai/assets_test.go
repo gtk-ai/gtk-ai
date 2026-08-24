@@ -13,14 +13,14 @@ func TestShippedAgentAssets(t *testing.T) {
 		"integrations/claude/scripts/gtkai-pre-tool-use.sh",
 		"integrations/claude/scripts/gtkai-post-tool-use.sh",
 		"integrations/claude/hooks/hooks.json",
+		"integrations/cursor/hooks/gtkai-pre-tool-use.sh",
+		"integrations/cursor/hooks/gtkai-post-tool-use.sh",
+		"integrations/cursor/rules/gtk-ai.mdc",
+		"integrations/codex/hooks/gtkai-pre-tool-use.sh",
+		"integrations/codex/AGENTS.md",
+		"integrations/opencode/plugins/gtkai.ts",
+		"integrations/opencode/AGENTS.md",
 		"scripts/claudecode/gtk-ai.md",
-		"scripts/cursor/hooks/gtkai-pre-tool-use.sh",
-		"scripts/cursor/hooks/gtkai-post-tool-use.sh",
-		"scripts/cursor/rules/gtk-ai.mdc",
-		"scripts/codex/hooks/gtkai-pre-tool-use.sh",
-		"scripts/codex/AGENTS.md",
-		"scripts/opencode/plugins/gtkai.ts",
-		"scripts/opencode/AGENTS.md",
 	}
 	for _, rel := range files {
 		path := filepath.Join(root, rel)
@@ -54,9 +54,9 @@ func TestCursorAndCodexScriptsPassAgent(t *testing.T) {
 		path   string
 		needle string
 	}{
-		{"scripts/cursor/hooks/gtkai-pre-tool-use.sh", "hook-pre --agent=cursor"},
-		{"scripts/cursor/hooks/gtkai-post-tool-use.sh", "hook-post --agent=cursor"},
-		{"scripts/codex/hooks/gtkai-pre-tool-use.sh", "hook-pre --agent=codex"},
+		{"integrations/cursor/hooks/gtkai-pre-tool-use.sh", "hook-pre --agent=cursor"},
+		{"integrations/cursor/hooks/gtkai-post-tool-use.sh", "hook-post --agent=cursor"},
+		{"integrations/codex/hooks/gtkai-pre-tool-use.sh", "hook-pre --agent=codex"},
 	}
 	for _, tc := range cases {
 		data, err := os.ReadFile(filepath.Join(root, tc.path))

@@ -75,7 +75,7 @@ jobs:
           echo "Built:"
           ls -lh dist/
 
-          tar -czf dist/gtkai-scripts.tar.gz scripts
+          tar -czf dist/gtkai-scripts.tar.gz scripts/claudecode integrations/cursor integrations/codex integrations/opencode
           (cd dist && shasum -a 256 gtkai-scripts.tar.gz > gtkai-scripts.tar.gz.sha256)
           echo "Packed scripts archive"
 
