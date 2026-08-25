@@ -303,30 +303,30 @@ resolve_scripts() {
   TMP_ROOT="$TMP_DIR/gtk-ai-scripts"
 }
 
+install_skill_global() {
+  AGENTS_SKILL_DIR="$HOME/.agents/skills/gtk-ai"
+  mkdir -p "$AGENTS_SKILL_DIR"
+  cp "$TMP_ROOT/skills/gtk-ai/SKILL.md" "$AGENTS_SKILL_DIR/SKILL.md"
+  success "$HOME/.agents/skills/gtk-ai/SKILL.md written"
+}
+
+install_skill_symlink() {
+  link_dir="$1"
+  target="$HOME/.agents/skills/gtk-ai"
+  link="$link_dir/gtk-ai"
+  mkdir -p "$link_dir"
+  if [ -L "$link" ] || [ -e "$link" ]; then
+    rm -f "$link"
+  fi
+  ln -s "$target" "$link"
+  success "${link} -> ${target}"
+}
+
 setup_claudecode() {
   header "Configuring Claude Code"
 
-  CLAUDE_DIR="$HOME/.claude"
-  SETTINGS_FILE="$CLAUDE_DIR/settings.json"
-  PROTOCOL_DOC="$CLAUDE_DIR/gtk-ai.md"
-  CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
-
-  mkdir -p "$CLAUDE_DIR"
-
-  cp "$TMP_ROOT/scripts/claudecode/gtk-ai.md" "$PROTOCOL_DOC"
-  success "$HOME/.claude/gtk-ai.md written"
-
-  if [ -f "$CLAUDE_MD" ]; then
-    if grep -q "@gtk-ai.md" "$CLAUDE_MD" 2>/dev/null; then
-      info "$HOME/.claude/CLAUDE.md — already up to date"
-    else
-      printf '\n@gtk-ai.md\n' >> "$CLAUDE_MD"
-      success "$HOME/.claude/CLAUDE.md updated"
-    fi
-  else
-    printf '@gtk-ai.md\n' > "$CLAUDE_MD"
-    success "$HOME/.claude/CLAUDE.md created"
-  fi
+  install_skill_global
+  install_skill_symlink "$HOME/.claude/skills"
 
   printf "To activate the Claude plugin, run:\n\n"
   printf "  ${BOLD}%s${RESET}\n\n" "claude plugin install -s user gtk-ai@gtk-ai"
@@ -352,6 +352,9 @@ setup_cursor() {
 
   cp "$TMP_ROOT/integrations/cursor/rules/gtk-ai.mdc" "$rules_dir/gtk-ai.mdc"
   success "$HOME/.cursor/rules/gtk-ai.mdc written"
+
+  install_skill_global
+  install_skill_symlink "$HOME/.cursor/skills"
 }
 
 setup_codex() {
@@ -387,6 +390,9 @@ setup_codex() {
   fi
 
   append_marked_block "$agents_md" "$TMP_ROOT/integrations/codex/AGENTS.md"
+
+  install_skill_global
+  install_skill_symlink "$HOME/.codex/skills"
 }
 
 setup_opencode() {

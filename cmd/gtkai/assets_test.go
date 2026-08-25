@@ -20,7 +20,7 @@ func TestShippedAgentAssets(t *testing.T) {
 		"integrations/codex/AGENTS.md",
 		"integrations/opencode/plugins/gtkai.ts",
 		"integrations/opencode/AGENTS.md",
-		"scripts/claudecode/gtk-ai.md",
+		"skills/gtk-ai/SKILL.md",
 	}
 	for _, rel := range files {
 		path := filepath.Join(root, rel)
