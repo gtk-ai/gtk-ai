@@ -1,27 +1,26 @@
 # gtk-ai
 
 ![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go&logoColor=white)
-![Version](https://img.shields.io/badge/version-0.11.0--beta.2-blue?style=flat)
+![Version](https://img.shields.io/badge/version-0.11.0--beta.6-blue?style=flat)
 ![License](https://img.shields.io/badge/license-Apache%202.0-blue?style=flat)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-blueviolet?style=flat)
 ![Cursor](https://img.shields.io/badge/Cursor-hooks-000000?style=flat)
 ![Codex](https://img.shields.io/badge/Codex-hooks-412991?style=flat)
 ![OpenCode](https://img.shields.io/badge/OpenCode-plugin-6D28D9?style=flat)
-![Build](https://img.shields.io/badge/build-passing-brightgreen?style=flat)
 
-`gtk-ai` is a two-part integration:
+`gtk-ai` reduces token usage from coding agents by intercepting shell commands and filtering their output before it reaches the model.
 
-- the `gtkai` Go binary, which rewrites shell commands before they run and filters their output
-- per-agent hooks, which register `PreToolUse` / `PostToolUse` (or the agent equivalent) and invoke `gtkai`
+Two parts:
 
-Registered shell commands are rewritten to `gtkai <cmd>` before execution. gtkai runs the real binary, injects compact flags when needed, and filters stdout. On Claude Code and OpenCode, `Read` and MCP still go through post-tool hooks.
+- the `gtkai` Go binary: rewrites commands before they run and filters stdout
+- per-agent integrations: register `PreToolUse` / `PostToolUse` hooks and invoke `gtkai`
 
 ```text
 Agent → Shell("git status")
               ↓ PreToolUse → gtkai hook-pre --agent=<agent>
-         command becomes gtkai git status
-              ↓ gtkai runs git status --porcelain -b
-         compact grouped status
+         command becomes: gtkai git status
+              ↓ gtkai runs: git status --porcelain -b
+         compact grouped output
               ↓
          Agent receives filtered output
 ```
@@ -50,16 +49,16 @@ gtk-ai requires the `gtkai` binary plus one integration per coding agent. The in
 ### Option A: install script
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/jmeiracorbal/gtk-ai/main/install.sh | sh
+curl -sSL https://raw.githubusercontent.com/gtk-ai/gtk-ai/main/install.sh | sh
 ```
 
 Explicit targets:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/jmeiracorbal/gtk-ai/main/install.sh | sh -s -- --agent=cursor
-curl -sSL https://raw.githubusercontent.com/jmeiracorbal/gtk-ai/main/install.sh | sh -s -- --agent=codex
-curl -sSL https://raw.githubusercontent.com/jmeiracorbal/gtk-ai/main/install.sh | sh -s -- --agent=opencode
-curl -sSL https://raw.githubusercontent.com/jmeiracorbal/gtk-ai/main/install.sh | sh -s -- --agent=all
+curl -sSL https://raw.githubusercontent.com/gtk-ai/gtk-ai/main/install.sh | sh -s -- --agent=cursor
+curl -sSL https://raw.githubusercontent.com/gtk-ai/gtk-ai/main/install.sh | sh -s -- --agent=codex
+curl -sSL https://raw.githubusercontent.com/gtk-ai/gtk-ai/main/install.sh | sh -s -- --agent=opencode
+curl -sSL https://raw.githubusercontent.com/gtk-ai/gtk-ai/main/install.sh | sh -s -- --agent=all
 ```
 
 Claude Code still needs the plugin after the marketplace is registered:
@@ -68,8 +67,6 @@ Claude Code still needs the plugin after the marketplace is registered:
 claude plugin install -s user gtk-ai@gtk-ai
 ```
 
-The install script also runs `gtkai plugin install-marketplace` for the entries listed in `marketplace.json` (currently `gtk-ai/date`).
-
 Then restart the agent.
 
 ### Option B: build from source
@@ -77,7 +74,7 @@ Then restart the agent.
 Requires Go 1.22+.
 
 ```bash
-git clone https://github.com/jmeiracorbal/gtk-ai
+git clone https://github.com/gtk-ai/gtk-ai
 cd gtk-ai
 go build -o ~/.local/bin/gtkai ./cmd/gtkai/
 ```
@@ -88,60 +85,55 @@ Then configure agents without reinstalling the binary:
 GTKAI_SKIP_BINARY=1 sh install.sh -- --agent=all
 ```
 
-For Claude Code only, `GTKAI_CLAUDE_ONLY=1 sh install.sh` still works and implies `--agent=claudecode`.
-
 ### Agent surfaces
 
 | | Claude Code | Cursor | Codex | OpenCode |
 |---|---|---|---|---|
 | **Hooks** | plugin `PreToolUse` / `PostToolUse` | `~/.cursor/hooks/` | `~/.codex/hooks/` | `~/.config/opencode/plugins/gtkai.ts` |
-| **Hook config** | plugin `hooks.json` | `~/.cursor/hooks.json` | `~/.codex/hooks.json` | global plugin |
 | **Shell rewrite** | matcher `Bash` | matcher `Shell` | matcher `Bash` and shell aliases | `tool.execute.before` |
 | **Read / MCP post** | yes | MCP only | shell rewrite only | `read` and MCP tools |
 
-## Modules
+## Built-in modules
 
 Each module handles one command. All built-in modules ship with the binary.
 
 | Module | Command | What it does |
 |---|---|---|
 | `find` | `find` | Groups paths by directory, caps shown files, extension summary |
-| `ls` | `ls` | Injects `-l` + `LC_ALL=C` (and `-a` only if the user asked); compact to counts and samples; skips noise dirs |
+| `ls` | `ls` | Injects `-l` + `LC_ALL=C`; compact to counts and samples |
 | `git` | `git` | status/log/diff/branch/show; write subcommands compact on exit 0; push/pull/fetch inject `-q` |
 | `grep` / `rg` | `grep`, `rg` | Shared grouping by file with per-file and total caps; `grep` injects `-nH` |
 | `cat` / `head` / `tail` | same | Reuses `read.FilterContent` on single-file output |
 | `tree` | `tree` | Entry count + capped listing |
 | `gain` | — | SQLite analytics: recorded on each proxy run |
 
-Command filters ship as standalone repos (for example `github.com/gtk-ai/date`). `install.sh` installs every entry in `marketplace.json`. Built-in modules remain as fallback until migrated.
+## Marketplace plugins
 
-### External filter commands
+External plugins ship as standalone repos and are installed with `gtkai plugin`:
 
 ```bash
-gtkai plugin install github.com/gtk-ai/date@v0.12.0
-gtkai plugin install github.com/gtk-ai/date@v0.12.0 --replace
-gtkai plugin install-marketplace marketplace.json --core-version=0.11.0-beta.4
+gtkai plugin install github.com/gtk-ai/date@v0.13.0
+gtkai plugin install github.com/gtk-ai/date@v0.13.0 --replace
 gtkai plugin list
 gtkai plugin uninstall gtk-ai/date
 ```
 
 | Command | Description |
 |---|---|
-| `filter install <module@version>` | Download, validate `gtkai.json`, build, register in `~/.gtk-ai/plugins.db` |
-| `filter install … --replace` | Required when another filter is already **active** for the same shell command |
-| `filter install-marketplace <file>` | Install every entry in `marketplace.json` (`install.sh` uses this; `--replace` is implicit) |
-| `filter list` | List installed plugins; marks the active one per command |
-| `filter uninstall <id>` | Remove by full id (e.g. `gtk-ai/date`); deletes `~/.gtk-ai/filters/<id>/` |
+| `plugin install <module@version>` | Download, validate `gtkai.json`, build, register in `~/.gtk-ai/plugins.db` |
+| `plugin install … --replace` | Required when another plugin is already active for the same command |
+| `plugin list` | List installed plugins; marks the active one per command |
+| `plugin uninstall <id>` | Remove by full id (e.g. `gtk-ai/date`); deletes `~/.gtk-ai/filters/<id>/` |
 
-**Conflict policy:** if filter `acme/date` is active for `date`, installing `gtk-ai/date` aborts unless you pass `--replace`. With `--replace`, the new filter becomes active; the previous one stays installed but inactive (not deleted). To remove it: `filter uninstall acme/date`. To switch back: reinstall the other filter with `--replace`.
+**Conflict policy:** if plugin `acme/date` is active for `date`, installing `gtk-ai/date` aborts unless you pass `--replace`. With `--replace`, the new plugin becomes active; the previous one stays installed but inactive. To remove it: `plugin uninstall acme/date`. To switch back: reinstall with `--replace`.
 
-Same filter id, new version: upgrade without `--replace`. Uninstalling the active filter promotes the most recently installed survivor for that command, or falls back to the built-in module when one exists.
+Uninstalling the active plugin promotes the most recently installed survivor for that command, or falls back to the built-in module when one exists.
 
-### subprocess/v1
+### stdin/v1 protocol
 
-External filters use contract **`subprocess/v1`**: gtk-ai runs the filter as an external program and exchanges JSON on stdin/stdout (rewrite + filter_output). Any language works if the binary implements the protocol. See [ARCHITECTURE.md](ARCHITECTURE.md) and the reference module [gtk-ai/date](https://github.com/gtk-ai/date).
+External plugins use contract `stdin/v1`: gtkai runs the plugin binary and exchanges JSON on stdin/stdout (`rewrite` + `filter_output`). Any language works as long as the binary implements the protocol. See [ARCHITECTURE.md](ARCHITECTURE.md) and the reference plugin [gtk-ai/date](https://github.com/gtk-ai/date).
 
-## Adding a module
+## Adding a built-in module
 
 1. Create `plugins/mycommand/mycommand.go`
 2. Implement the `Module` interface
@@ -151,7 +143,7 @@ External filters use contract **`subprocess/v1`**: gtk-ai runs the filter as an 
 ```go
 package mycommand
 
-import "github.com/jmeiracorbal/gtk-ai/internal/registry"
+import "github.com/gtk-ai/gtk-ai/internal/registry"
 
 func init() { registry.Register(&Module{}) }
 
@@ -169,14 +161,12 @@ func (m *Module) TokensAfter(filtered string) int { return registry.EstimateToke
 ```
 
 ```go
-_ "github.com/jmeiracorbal/gtk-ai/plugins/mycommand"
+_ "github.com/gtk-ai/gtk-ai/plugins/mycommand"
 ```
-
-No other changes needed.
 
 ## MCP passthrough
 
-By default, gtkai truncates all `mcp__*` tool responses above 3,000 chars. To exempt specific tools, set `GTK_MCP_PASSTHROUGH_PATTERNS` in your shell config:
+By default, gtkai truncates all `mcp__*` tool responses above 3,000 chars. To exempt specific tools:
 
 ```sh
 export GTK_MCP_PASSTHROUGH_PATTERNS="my_tool_*,other_tool"
@@ -184,20 +174,18 @@ export GTK_MCP_PASSTHROUGH_PATTERNS="my_tool_*,other_tool"
 
 Pattern syntax: exact name or glob prefix (`prefix_*`).
 
-To identify which tools to exempt, check the tool names returned by your MCP servers. Any tool whose output should reach the agent unmodified, such as structured symbol data or memory results, should be listed here.
-
 ## Commands
 
 ```text
 gtkai hook-pre --agent=<agent>   PreToolUse handler — rewrites shell commands to gtkai
 gtkai hook-post --agent=<agent>  PostToolUse handler — filters Read and MCP
 gtkai json-merge <file>          Deep-merge JSON from stdin into an agent config file
-gtkai git status                 Proxy: run a registered command through gtkai
+gtkai <module> [args...]         Proxy: run a registered command through gtkai
 gtkai mcp-scan                   List MCP server tools, suggest passthrough prefixes
 gtkai gain                       Token savings analytics
 gtkai plugin install <mod@ver> [--replace]  Install an external plugin
 gtkai plugin install-marketplace <file> --core-version=<ver>  Install marketplace entries
-gtkai plugin uninstall <id>      Remove an installed filter by full id
+gtkai plugin uninstall <id>      Remove an installed plugin by full id
 gtkai plugin list                List installed plugins (active marked)
 gtkai version                    Print version
 ```
@@ -214,27 +202,20 @@ gtk-ai/
 │   ├── proxy/              # execute + filter + gain
 │   ├── text/               # ANSI strip
 │   ├── jsonmerge/          # installer config merge
-│   └── hook/               # PreToolUse and PostToolUse handlers (per-agent JSON)
-├── plugins/
-│   ├── find/               # find output filter
-│   ├── ls/                 # ls output filter
-│   ├── git/                # git subcommand filters
-│   ├── grep/               # grep output filter
-│   ├── readcmd/            # cat/head/tail via read.FilterContent
-│   ├── tree/               # tree output filter
-│   └── gain/               # SQLite token savings analytics
-├── plugin/                 # Claude Code plugin (hooks + scripts)
-└── scripts/
-    ├── cursor/             # Cursor hook scripts + rule
+│   ├── hook/               # PreToolUse and PostToolUse handlers
+│   ├── pluginregistry/     # SQLite DB for installed plugins
+│   ├── pluginsubprocess/   # stdin/v1 protocol adapter
+│   ├── plugininstall/      # download, validate, install plugin binaries
+│   └── pluginmanifest/     # gtkai.json manifest parsing and validation
+├── plugins/                # built-in modules (compiled into the binary)
+└── integrations/
+    ├── claude/             # Claude Code plugin (hooks + scripts)
+    ├── cursor/             # Cursor hook scripts
     ├── codex/              # Codex hook scripts
     └── opencode/           # OpenCode plugin
 ```
 
 The `registry` package is the only shared dependency between modules. Modules never import each other.
-
-## Works well with
-
-**[hybrid-coco](https://github.com/jmeiracorbal/hybrid-coco)**: local code intelligence for Claude Code. While gtk-ai filters tool output, hybrid-coco replaces file reads and grep with index queries for code navigation. Both operate independently through separate hooks and complement each other.
 
 ## License
 
