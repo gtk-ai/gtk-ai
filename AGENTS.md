@@ -104,7 +104,15 @@ Every plugin ships a `gtkai.json` at the repo root:
 
 Run this before every release. The goal is to catch what unit tests can't: integration scripts with wrong flags, missing `--agent`, stale plugin cache, broken hook wiring.
 
-### 1. Verify integration scripts
+### 1. Verify marketplace.json source path
+
+```bash
+python3 -c "import json; d=json.load(open('.claude-plugin/marketplace.json')); print(d['plugins'][0]['source'])"
+```
+
+Must print `./integrations/claude`. If it points to a non-existent path (e.g. `./plugin`), `claude plugin install` will fail silently with a path error.
+
+### 2. Verify integration scripts
 
 ```bash
 grep -n "hook-post\|hook-pre" integrations/claude/scripts/*.sh
