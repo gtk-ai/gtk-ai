@@ -376,17 +376,23 @@ setup_codex() {
 
   mkdir -p "$HOME/.codex"
   touch "$codex_config"
+  # Codex 0.149.1+: hooks activate via hooks.json alone; [features] codex_hooks is legacy.
+  # Remove the entry if a previous install wrote it, and drop the [features] header
+  # if it becomes empty.
   if grep -q 'codex_hooks' "$codex_config" 2>/dev/null; then
-    info "$HOME/.codex/config.toml — codex_hooks already set"
-  elif grep -q '^\[features\]' "$codex_config" 2>/dev/null; then
     tmp_cfg=$(mktemp)
-    awk '/^\[features\]/{print; print "codex_hooks = true"; next} {print}' "$codex_config" > "$tmp_cfg"
+    grep -v '^codex_hooks[[:space:]]*=' "$codex_config" | \
+      awk '
+        /^\[features\]/ { saved=$0; next }
+        saved != "" {
+          if (/^[[:space:]]*$/) { next }
+          if (/^\[/) { saved=""; print; next }
+          print saved; saved=""
+        }
+        { print }
+      ' > "$tmp_cfg"
     mv "$tmp_cfg" "$codex_config"
-    success "$HOME/.codex/config.toml — enabled [features].codex_hooks"
-  else
-    tail -c1 "$codex_config" 2>/dev/null | grep -q $'\n' || printf '\n' >> "$codex_config"
-    printf '\n[features]\ncodex_hooks = true\n' >> "$codex_config"
-    success "$HOME/.codex/config.toml — enabled [features].codex_hooks"
+    success "$HOME/.codex/config.toml — removed legacy codex_hooks (Codex 0.149.1+)"
   fi
 
   append_marked_block "$agents_md" "$TMP_ROOT/integrations/codex/AGENTS.md"

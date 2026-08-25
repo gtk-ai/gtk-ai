@@ -192,13 +192,10 @@ func TestInstallCodex(t *testing.T) {
 	if !strings.Contains(string(hooksJSON), "PreToolUse") {
 		t.Fatalf("hooks.json does not register PreToolUse:\n%s", hooksJSON)
 	}
-	// config.toml debe habilitar codex_hooks
-	configTOML, err := os.ReadFile(filepath.Join(home, ".codex", "config.toml"))
-	if err != nil {
-		t.Fatalf("config.toml not created: %v", err)
-	}
-	if !strings.Contains(string(configTOML), "codex_hooks") {
-		t.Fatalf("config.toml does not enable codex_hooks:\n%s", configTOML)
+	// config.toml must NOT contain the legacy codex_hooks entry (Codex 0.149.1+)
+	configTOML, _ := os.ReadFile(filepath.Join(home, ".codex", "config.toml"))
+	if strings.Contains(string(configTOML), "codex_hooks") {
+		t.Fatalf("config.toml must not contain legacy codex_hooks:\n%s", configTOML)
 	}
 	// skill symlink
 	linkPath := filepath.Join(home, ".codex", "skills", "gtk-ai")
