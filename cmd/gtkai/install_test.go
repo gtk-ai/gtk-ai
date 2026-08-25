@@ -91,26 +91,27 @@ func TestInstallClaudeCode(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("claudecode install exit %d:\n%s", code, out)
 	}
-	// settings.json debe existir con la clave extraKnownMarketplaces
-	settingsPath := filepath.Join(home, ".claude", "settings.json")
-	if _, err := os.Stat(settingsPath); err != nil {
-		t.Fatalf("settings.json not created: %v", err)
+	// skill must be installed in the global store
+	skillPath := filepath.Join(home, ".agents", "skills", "gtk-ai", "SKILL.md")
+	if _, err := os.Stat(skillPath); err != nil {
+		t.Fatalf("SKILL.md not in global store: %v", err)
 	}
-	data, _ := os.ReadFile(settingsPath)
-	if !strings.Contains(string(data), "gtk-ai") {
-		t.Fatalf("settings.json does not contain gtk-ai entry:\n%s", data)
-	}
-	// gtk-ai.md debe existir
-	if _, err := os.Stat(filepath.Join(home, ".claude", "gtk-ai.md")); err != nil {
-		t.Fatalf("gtk-ai.md not created: %v", err)
-	}
-	// CLAUDE.md debe incluir @gtk-ai.md
-	claudeMD, err := os.ReadFile(filepath.Join(home, ".claude", "CLAUDE.md"))
+	// ~/.claude/skills/gtk-ai must be a symlink pointing to the global store
+	linkPath := filepath.Join(home, ".claude", "skills", "gtk-ai")
+	info, err := os.Lstat(linkPath)
 	if err != nil {
-		t.Fatalf("CLAUDE.md not created: %v", err)
+		t.Fatalf("claude skill symlink not created: %v", err)
 	}
-	if !strings.Contains(string(claudeMD), "@gtk-ai.md") {
-		t.Fatalf("CLAUDE.md does not include @gtk-ai.md:\n%s", claudeMD)
+	if info.Mode()&os.ModeSymlink == 0 {
+		t.Fatal("~/.claude/skills/gtk-ai is not a symlink")
+	}
+	target, err := os.Readlink(linkPath)
+	if err != nil {
+		t.Fatalf("readlink: %v", err)
+	}
+	expected := filepath.Join(home, ".agents", "skills", "gtk-ai")
+	if target != expected {
+		t.Fatalf("symlink target: got %q, want %q", target, expected)
 	}
 }
 
@@ -146,6 +147,22 @@ func TestInstallCursor(t *testing.T) {
 	// regla de contexto
 	if _, err := os.Stat(filepath.Join(home, ".cursor", "rules", "gtk-ai.mdc")); err != nil {
 		t.Fatalf("gtk-ai.mdc rule not installed: %v", err)
+	}
+	// skill symlink
+	linkPath := filepath.Join(home, ".cursor", "skills", "gtk-ai")
+	info, err := os.Lstat(linkPath)
+	if err != nil {
+		t.Fatalf("cursor skill symlink not created: %v", err)
+	}
+	if info.Mode()&os.ModeSymlink == 0 {
+		t.Fatal("~/.cursor/skills/gtk-ai is not a symlink")
+	}
+	target, err := os.Readlink(linkPath)
+	if err != nil {
+		t.Fatalf("readlink cursor skill: %v", err)
+	}
+	if target != filepath.Join(home, ".agents", "skills", "gtk-ai") {
+		t.Fatalf("cursor skill symlink target: got %q", target)
 	}
 }
 
@@ -183,6 +200,22 @@ func TestInstallCodex(t *testing.T) {
 	if !strings.Contains(string(configTOML), "codex_hooks") {
 		t.Fatalf("config.toml does not enable codex_hooks:\n%s", configTOML)
 	}
+	// skill symlink
+	linkPath := filepath.Join(home, ".codex", "skills", "gtk-ai")
+	info, err = os.Lstat(linkPath)
+	if err != nil {
+		t.Fatalf("codex skill symlink not created: %v", err)
+	}
+	if info.Mode()&os.ModeSymlink == 0 {
+		t.Fatal("~/.codex/skills/gtk-ai is not a symlink")
+	}
+	target, err := os.Readlink(linkPath)
+	if err != nil {
+		t.Fatalf("readlink codex skill: %v", err)
+	}
+	if target != filepath.Join(home, ".agents", "skills", "gtk-ai") {
+		t.Fatalf("codex skill symlink target: got %q", target)
+	}
 }
 
 func TestInstallOpenCode(t *testing.T) {
@@ -213,7 +246,7 @@ func TestInstallUnknownAgentFails(t *testing.T) {
 }
 
 // TestInstallIdempotentClaudeCode verifica que ejecutar install.sh dos veces
-// no duplica entradas en CLAUDE.md ni falla.
+// no falla y el symlink queda apuntando al target correcto.
 func TestInstallIdempotentClaudeCode(t *testing.T) {
 	home := t.TempDir()
 	installDir := t.TempDir()
@@ -225,12 +258,13 @@ func TestInstallIdempotentClaudeCode(t *testing.T) {
 			t.Fatalf("run %d exit %d:\n%s", i+1, code, out)
 		}
 	}
-	claudeMD, err := os.ReadFile(filepath.Join(home, ".claude", "CLAUDE.md"))
+	linkPath := filepath.Join(home, ".claude", "skills", "gtk-ai")
+	target, err := os.Readlink(linkPath)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("readlink after 2 runs: %v", err)
 	}
-	count := strings.Count(string(claudeMD), "@gtk-ai.md")
-	if count != 1 {
-		t.Fatalf("expected exactly 1 @gtk-ai.md entry, got %d:\n%s", count, claudeMD)
+	expected := filepath.Join(home, ".agents", "skills", "gtk-ai")
+	if target != expected {
+		t.Fatalf("symlink target after 2 runs: got %q, want %q", target, expected)
 	}
 }
