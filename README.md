@@ -61,7 +61,7 @@ curl -sSL https://raw.githubusercontent.com/gtk-ai/gtk-ai/main/install.sh | sh -
 curl -sSL https://raw.githubusercontent.com/gtk-ai/gtk-ai/main/install.sh | sh -s -- --agent=all
 ```
 
-Claude Code still needs the plugin after the marketplace is registered:
+Claude Code still needs the plugin installed:
 
 ```bash
 claude plugin install -s user gtk-ai@gtk-ai
@@ -120,7 +120,7 @@ gtkai plugin uninstall gtk-ai/date
 
 | Command | Description |
 |---|---|
-| `plugin install <module@version>` | Download, validate `gtkai.json`, build, register in `~/.gtk-ai/plugins.db` |
+| `plugin install <module@version>` | Download, validate `gtkai.json` contract, build, register in `~/.gtk-ai/plugins.db` |
 | `plugin install … --replace` | Required when another plugin is already active for the same command |
 | `plugin list` | List installed plugins; marks the active one per command |
 | `plugin uninstall <id>` | Remove by full id (e.g. `gtk-ai/date`); deletes `~/.gtk-ai/filters/<id>/` |
@@ -184,7 +184,6 @@ gtkai <module> [args...]         Proxy: run a registered command through gtkai
 gtkai mcp-scan                   List MCP server tools, suggest passthrough prefixes
 gtkai gain                       Token savings analytics
 gtkai plugin install <mod@ver> [--replace]  Install an external plugin
-gtkai plugin install-marketplace <file> --core-version=<ver>  Install marketplace entries
 gtkai plugin uninstall <id>      Remove an installed plugin by full id
 gtkai plugin list                List installed plugins (active marked)
 gtkai version                    Print version

@@ -17,8 +17,6 @@ func runPlugin(args []string) {
 	switch args[0] {
 	case "install":
 		runPluginInstall(args[1:])
-	case "install-marketplace":
-		runPluginInstallMarketplace(args[1:])
 	case "uninstall":
 		runPluginUninstall(args[1:])
 	case "list":
@@ -31,7 +29,7 @@ func runPlugin(args []string) {
 }
 
 func printPluginUsage() {
-	fmt.Fprintln(os.Stderr, "usage: gtkai plugin install <module@version> [--replace] | install-marketplace <marketplace.json> | uninstall <id> | list")
+	fmt.Fprintln(os.Stderr, "usage: gtkai plugin install <module@version> [--replace] | uninstall <id> | list")
 }
 
 func runPluginInstall(args []string) {
@@ -75,48 +73,6 @@ func runPluginInstall(args []string) {
 	fmt.Printf("installed %s@%s -> %s (%s)\n", rec.Module, rec.Version, rec.ID, rec.BinaryPath)
 }
 
-func runPluginInstallMarketplace(args []string) {
-	var marketplacePath string
-	var coreVersion string
-	for i := 0; i < len(args); i++ {
-		switch {
-		case args[i] == "--core-version":
-			if i+1 >= len(args) {
-				fmt.Fprintln(os.Stderr, "gtkai plugin install-marketplace: --core-version requires a value")
-				os.Exit(1)
-			}
-			coreVersion = args[i+1]
-			i++
-		case strings.HasPrefix(args[i], "--core-version="):
-			coreVersion = strings.TrimPrefix(args[i], "--core-version=")
-		case strings.HasPrefix(args[i], "-"):
-			fmt.Fprintf(os.Stderr, "gtkai plugin install-marketplace: unknown flag %q\n", args[i])
-			os.Exit(1)
-		default:
-			if marketplacePath != "" {
-				fmt.Fprintln(os.Stderr, "gtkai plugin install-marketplace: too many arguments")
-				os.Exit(1)
-			}
-			marketplacePath = args[i]
-		}
-	}
-	if marketplacePath == "" {
-		fmt.Fprintln(os.Stderr, "usage: gtkai plugin install-marketplace <marketplace.json> --core-version=<ver>")
-		os.Exit(1)
-	}
-	if coreVersion == "" {
-		fmt.Fprintln(os.Stderr, "gtkai plugin install-marketplace: --core-version is required")
-		os.Exit(1)
-	}
-	installed, err := plugininstall.InstallMarketplace(marketplacePath, coreVersion, releaseRepo())
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "gtkai plugin install-marketplace: %v\n", err)
-		os.Exit(1)
-	}
-	for _, rec := range installed {
-		fmt.Printf("installed %s@%s -> %s (%s)\n", rec.Module, rec.Version, rec.ID, rec.BinaryPath)
-	}
-}
 
 func runPluginUninstall(args []string) {
 	if len(args) != 1 || args[0] == "" {

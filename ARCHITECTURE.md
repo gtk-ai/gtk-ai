@@ -89,7 +89,7 @@ Many filters may declare the same `command` value. Only one is **active** at a t
 
 - **Active** = most recently installed among all filters whose `command` equals that argv0.
 - On `filter install`, if another filter already targets the same command, abort unless `--replace` is passed. With `--replace`, the new filter becomes active; the previous one stays installed but inactive.
-- `filter install-marketplace` (used by `install.sh`) passes `--replace` implicitly.
+- On `plugin install` with `--replace`, the new plugin becomes active; the previous one stays installed but inactive.
 - On `filter uninstall gtk-ai/ls` (full id required):
   - No filters remain for that command → pass through (no rewrite).
   - Other filters remain → active = most recent among survivors.
@@ -114,15 +114,15 @@ type EnvInjector interface {
 
 ---
 
-## Distribution (filter marketplace)
+## Distribution
 
 ### Repository layout
 
 ```
 gtk-ai/gtk-ai   — core binary, runtime integrations
-gtk-ai/date     — filter for date (reference template)
-gtk-ai/ls       — filter for ls
-gtk-ai/git      — filter for git
+gtk-ai/date     — plugin for date (reference template)
+gtk-ai/ls       — plugin for ls
+gtk-ai/git      — plugin for git
 …               — one repo per intercepted argv0
 ```
 
@@ -289,25 +289,11 @@ Installed filters are recorded in `~/.gtk-ai/plugins.db` (SQLite). The path is r
 
 Binaries are downloaded from the GitHub Releases page of the filter repository and stored under the namespaced path.
 
-### Marketplace and install.sh
+### Installing plugins
 
-`marketplace.json` at the repository root is the single catalog of installable gtk-ai extensions. `install.sh` runs `gtkai plugin install-marketplace marketplace.json` by default (`--replace` implicit).
+Plugins are installed individually with `gtkai plugin install <module@version>`. Each install downloads the binary, validates the `gtkai.json` contract, and registers the plugin in `~/.gtk-ai/plugins.db`.
 
-```json
-{
-  "name": "gtk-ai",
-  "entries": [
-    {
-      "module": "github.com/gtk-ai/date",
-      "version": "v0.12.0"
-    }
-  ]
-}
-```
-
-Each entry is installed via `filter install` semantics (download, validate `gtkai.json`, register in `~/.gtk-ai/plugins.db`). New filters are added here — no separate official filter list.
-
-The reference template repository for building a new filter is [gtk-ai/date](https://github.com/gtk-ai/date) ([HOWTO.md](https://github.com/gtk-ai/date/blob/main/HOWTO.md)).
+The reference template for building a new plugin is [gtk-ai/date](https://github.com/gtk-ai/date) ([HOWTO.md](https://github.com/gtk-ai/date/blob/main/HOWTO.md)).
 
 ### Built-ins as fallback
 
@@ -317,8 +303,8 @@ Built-in filters (compiled into `gtkai`) remain active as fallback when no exter
 
 Built-ins migrate to external repos gradually — one `gtk-ai/<cmd>` repository at a time:
 
-1. Publish the filter repo and add an entry to `marketplace.json`.
-2. `install.sh` installs it by default; the external filter shadows the built-in.
+1. Publish the plugin repo.
+2. Users install it with `gtkai plugin install <module@version>`; the external plugin shadows the built-in.
 3. Remove the built-in blank import from `cmd/gtkai/main.go` only when the command should require an external install (as with `date`).
 
 Until step 3, the built-in remains compiled in as fallback.

@@ -308,38 +308,10 @@ setup_claudecode() {
 
   CLAUDE_DIR="$HOME/.claude"
   SETTINGS_FILE="$CLAUDE_DIR/settings.json"
-  KNOWN_MARKETPLACES="$CLAUDE_DIR/plugins/known_marketplaces.json"
-  MARKETPLACE_DIR="$CLAUDE_DIR/plugins/marketplaces/gtk-ai"
   PROTOCOL_DOC="$CLAUDE_DIR/gtk-ai.md"
   CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
 
-  mkdir -p "$CLAUDE_DIR/plugins/marketplaces"
-
-  result=$(json_merge '{"extraKnownMarketplaces":{"gtk-ai":{"source":{"source":"github","repo":"jmeiracorbal/gtk-ai"}}}}' "$SETTINGS_FILE")
-  success "$HOME/.claude/settings.json — $result"
-
-  if [ -d "$MARKETPLACE_DIR/.git" ]; then
-    info "Marketplace cache exists — updating..."
-    git -C "$MARKETPLACE_DIR" pull --ff-only -q 2>/dev/null || warn "Could not update marketplace cache"
-    if git -C "$MARKETPLACE_DIR" checkout "v$INSTALLED_VERSION" -q 2>/dev/null; then
-      success "$HOME/.claude/plugins/marketplaces/gtk-ai pinned to v$INSTALLED_VERSION"
-    else
-      warn "Tag v$INSTALLED_VERSION not found — using default branch"
-    fi
-  else
-    info "Cloning marketplace cache..."
-    if git clone --depth 1 --branch "v$INSTALLED_VERSION" "https://github.com/$REPO.git" "$MARKETPLACE_DIR" >/dev/null 2>&1; then
-      success "$HOME/.claude/plugins/marketplaces/gtk-ai cloned at v$INSTALLED_VERSION"
-    elif git clone --depth 1 "https://github.com/$REPO.git" "$MARKETPLACE_DIR" >/dev/null 2>&1; then
-      warn "Tag v$INSTALLED_VERSION not found — using default branch"
-    else
-      error "Failed to clone marketplace repository"
-    fi
-  fi
-
-  NOW=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
-  result=$(json_merge "$(printf '{"gtk-ai":{"source":{"source":"github","repo":"jmeiracorbal/gtk-ai"},"installLocation":"%s","lastUpdated":"%s"}}' "$MARKETPLACE_DIR" "$NOW")" "$KNOWN_MARKETPLACES")
-  success "$HOME/.claude/plugins/known_marketplaces.json — $result"
+  mkdir -p "$CLAUDE_DIR"
 
   cp "$TMP_ROOT/scripts/claudecode/gtk-ai.md" "$PROTOCOL_DOC"
   success "$HOME/.claude/gtk-ai.md written"
@@ -516,35 +488,7 @@ case "$AGENT" in
     ;;
 esac
 
-install_marketplace() {
-  if [ "${GTKAI_SKIP_MARKETPLACE:-}" = "1" ] || [ "${GTKAI_SKIP_FILTERS:-}" = "1" ]; then
-    warn "Skipping marketplace install (GTKAI_SKIP_MARKETPLACE=1)"
-    return
-  fi
-
-  header "Installing marketplace entries"
-
-  MARKETPLACE_JSON=""
-  if [ -f "$(dirname "$0")/marketplace.json" ]; then
-    MARKETPLACE_JSON="$(cd "$(dirname "$0")" && pwd)/marketplace.json"
-  elif [ -n "$TMP_DIR" ] && [ -f "$TMP_DIR/gtk-ai/marketplace.json" ]; then
-    MARKETPLACE_JSON="$TMP_DIR/gtk-ai/marketplace.json"
-  else
-    warn "marketplace.json not found — skipping marketplace install"
-    return
-  fi
-
-  INSTALL_MARKETPLACE_ARGS="--core-version=$INSTALLED_VERSION"
-
-  if "$GTKAI_BIN" filter install-marketplace "$MARKETPLACE_JSON" $INSTALL_MARKETPLACE_ARGS; then
-    success "Marketplace entries installed"
-  else
-    error "Marketplace installation failed"
-  fi
-}
-
 warn_rtk
-install_marketplace
 rm -rf "$TMP_DIR"
 
 header "Done"

@@ -174,7 +174,6 @@ On **install**, when another filter already targets the same command:
 
 - Abort with an error unless `--replace` is passed (same `id` upgrades always allowed).
 - With `--replace`, the newly installed filter becomes active; the previous filter stays installed but inactive.
-- `install-marketplace` applies `--replace` implicitly.
 
 On **uninstall** (`gtkai plugin uninstall author/<cmd>` — full id only):
 
@@ -212,9 +211,9 @@ Each row is one external repository. One repo per shell argv0 (or a small group 
 
 **Per-filter steps:**
 
-1. Publish `github.com/gtk-ai/<cmd>` with `gtkai.json` (`command`, `subprocess/v1`, semver constraint).
-2. Add entry to `marketplace.json`; `install.sh` installs it by default.
-3. External filter shadows the built-in (active = most recent install).
+1. Publish `github.com/gtk-ai/<cmd>` with `gtkai.json` (`command`, `stdin/v1`, semver constraint).
+2. Users install it with `gtkai plugin install <module@version>`.
+3. External plugin shadows the built-in (active = most recent install).
 4. Remove the blank import from `cmd/gtkai/main.go` only when the command should require an external install (as with `date`).
 
 Until step 4, the built-in stays compiled in as fallback.
@@ -223,7 +222,7 @@ Until step 4, the built-in stays compiled in as fallback.
 
 | Repo | `command` | Built-in removed | Notes |
 |---|---|---|---|
-| [gtk-ai/date](https://github.com/gtk-ai/date) | `date` | yes | Reference template; `marketplace.json` → `v0.12.0`; manifest uses `command` field |
+| [gtk-ai/date](https://github.com/gtk-ai/date) | `date` | yes | Reference template; install with `gtkai plugin install github.com/gtk-ai/date@v0.13.0` |
 
 #### Pending — high priority
 

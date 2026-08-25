@@ -43,7 +43,6 @@ Usage:
   gtkai mcp-scan                   List tools from all MCP servers, suggest passthrough prefixes
   gtkai gain                       Show token savings analytics
   gtkai plugin install <mod@ver> [--replace]  Install an external plugin (go dependency)
-  gtkai plugin install-marketplace <file> --core-version=<ver>  Install entries from marketplace.json
   gtkai plugin uninstall <id>      Remove an installed plugin by full id
   gtkai plugin list                List installed plugins (active marked)
   gtkai version                    Print version
