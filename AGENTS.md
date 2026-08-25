@@ -9,8 +9,6 @@ Two independent phases:
 
 Never collapse both phases into one. The integrations depend on the binary. The binary does not write agent config files; `install.sh` does.
 
-Target flow and remaining work: `ROADMAP.md`. `0.10.0` adds Cursor, Codex, and OpenCode hook integrations. `0.9.0` completed §3 runners (npm, docker).
-
 ## Versions
 
 When changing the version, update every file that exposes it:
@@ -39,18 +37,70 @@ Avoid: intelligent compression, semantic optimization, smart deduplication.
 
 ## Plugin infrastructure
 
-External plugins are binaries that implement the `registry.Module` interface via a JSON stdin/stdout protocol. The infrastructure lives in `internal/`:
+External plugins are binaries that speak the `stdin/v1` JSON protocol on stdin/stdout. The infrastructure lives in `internal/`:
 
 | Package | Role |
 |---|---|
 | `pluginregistry` | SQLite DB (`~/.gtk-ai/plugins.db`) — tracks installed plugins |
-| `pluginsubprocess` | Adapts an external binary to `registry.Module` via JSON protocol |
+| `pluginsubprocess` | Adapts an external binary to `registry.Module` via stdin/v1 |
 | `plugininstall` | Downloads, validates, and installs plugin binaries |
 | `pluginmanifest` | Parses and validates `gtkai.json` plugin manifests |
 
-Built-in plugins in `plugins/` are compiled into the binary and registered via `init()`. External plugins from the marketplace are subprocess-based (JSON protocol). Both implement `registry.Module` — the proxy treats them identically.
+Built-in plugins in `plugins/` are compiled into the binary and registered via `init()`. External plugins use the subprocess adapter. Both implement `registry.Module` — the proxy treats them identically.
 
-## Post-merge <!-- post-merge-workflow -->
+### Plugin naming
+
+```
+author/<cmd>
+```
+
+`author` is the GitHub org or username. `<cmd>` is the shell argv0 intercepted. For official plugins: `gtk-ai/date`, `gtk-ai/ls`, etc. Third-party authors use their own prefix.
+
+### stdin/v1 protocol
+
+Request (core → plugin binary):
+
+```json
+{
+  "operation": "rewrite" | "filter_output",
+  "args": ["..."],
+  "output": "...",
+  "exit_code": 0
+}
+```
+
+Response (plugin binary → core):
+
+```json
+{
+  "args": ["..."],
+  "changed": true,
+  "output": "..."
+}
+```
+
+`changed: false` short-circuits processing — the original value passes through unchanged. `exit_code` is -1 when unknown (native tool post-hook).
+
+### gtkai.json manifest
+
+Every plugin ships a `gtkai.json` at the repo root:
+
+```json
+{
+  "id": "author/<cmd>",
+  "command": "<argv0>",
+  "platforms": ["linux/amd64", "darwin/arm64"],
+  "contract": "stdin/v1",
+  "gtkai-core-version": {
+    "version": "0.11.0",
+    "constraint": "min"
+  }
+}
+```
+
+`contract` must be `stdin/v1`. `constraint` is `"min"` (running gtkai >= version) or `"exact"` (must match). On install, the core validates the manifest and runs a contract check (sends `rewrite` and `filter_output` probes and expects valid JSON back) before writing anything to the registry.
+
+## Post-merge
 
 After merging a PR:
 
