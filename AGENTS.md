@@ -100,6 +100,83 @@ Every plugin ships a `gtkai.json` at the repo root:
 
 `contract` must be `stdin/v1`. `constraint` is `"min"` (running gtkai >= version) or `"exact"` (must match). On install, the core validates the manifest and runs a contract check (sends `rewrite` and `filter_output` probes and expects valid JSON back) before writing anything to the registry.
 
+## Clean install validation
+
+Run this before every release. The goal is to catch what unit tests can't: integration scripts with wrong flags, missing `--agent`, stale plugin cache, broken hook wiring.
+
+### 1. Verify integration scripts
+
+```bash
+grep -n "hook-post\|hook-pre" integrations/claude/scripts/*.sh
+```
+
+Every call to `hook-post` must pass `--agent=claudecode`. Every call to `hook-pre` must pass `--agent=claudecode`. No bare `hook-post` or `hook-pre` without the flag.
+
+### 2. Build and install the binary locally
+
+```bash
+go build -o ~/.local/bin/gtkai ./cmd/gtkai/
+gtkai version
+```
+
+### 3. Test with real payloads
+
+PostToolUse — Bash output filtering:
+
+```bash
+echo '{"tool_name":"Bash","tool_input":{"command":"git status"},"tool_response":{"stdout":"On branch main\nnothing to commit\n","interrupted":false},"tool_output":null}' \
+  | gtkai hook-post --agent=claudecode
+```
+
+Expected: silent (no output) if nothing to filter, or filtered JSON on stdout.
+
+PostToolUse — Read tool:
+
+```bash
+echo '{"tool_name":"Read","tool_input":{"file_path":"README.md"},"tool_response":[{"type":"text","text":"# gtk-ai\n..."}],"tool_output":null}' \
+  | gtkai hook-post --agent=claudecode
+```
+
+PreToolUse — command rewrite:
+
+```bash
+echo '{"tool_name":"Bash","tool_input":{"command":"git status"}}' \
+  | gtkai hook-pre --agent=claudecode
+```
+
+Expected: JSON with `{"hookSpecificOutput":{"hookEventName":"PreToolUse","updatedInput":{"command":"gtkai git status"}}}`.
+
+### 4. Uninstall and reinstall the Claude Code plugin
+
+```bash
+claude plugin uninstall gtk-ai
+claude plugin install -s user gtk-ai@gtk-ai
+```
+
+After reinstall, inspect the installed script to confirm it passes `--agent`:
+
+```bash
+cat ~/.claude/plugins/cache/gtk-ai/*/scripts/gtkai-post-tool-use.sh | grep "hook-post"
+```
+
+Must show `hook-post --agent=claudecode`, not bare `hook-post`.
+
+### 5. Check other agents
+
+For Cursor — verify the hooks scripts exist and pass the right flags:
+
+```bash
+grep "hook-post\|hook-pre" ~/.cursor/hooks/gtkai-*.sh 2>/dev/null || echo "not installed"
+```
+
+For Codex — same check:
+
+```bash
+grep "hook-pre" ~/.codex/hooks/gtkai-pre-tool-use.sh 2>/dev/null || echo "not installed"
+```
+
+---
+
 ## Post-merge
 
 After merging a PR:
