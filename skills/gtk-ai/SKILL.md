@@ -1,21 +1,28 @@
 ---
 name: gtk-ai
-description: Active when gtkai binary is in PATH — transparent command proxy and output filter for git, grep, rg, find, ls, docker, cargo, go, python, pytest, npm, tree, and MCP Read output. Load to understand filtering behavior and avoid misinterpreting compact output.
+description: Active when .gtkai exists at the repo root — transparent command proxy and output filter for git, grep, rg, find, ls, docker, cargo, go, python, pytest, npm, tree, and MCP Read output. Load to understand filtering behavior and avoid misinterpreting compact output.
 ---
 
 # gtk-ai
 
 gtk-ai intercepts shell commands before they run (PreToolUse rewrite) and compacts their output after (PostToolUse filter). The proxy is transparent: it exits silently when the binary is absent, and passes through any command it has no rule for.
 
-## 1. Verify the proxy is active
+## 1. Verify the proxy is active for this project
 
-Before assuming gtk-ai is intercepting commands:
+Before applying gtk-ai context:
+
+1. Resolve the Git repository root, or use the current workspace if it is not a Git repository.
+2. Read `<root>/.gtkai`.
+3. Continue only when the file is present.
+4. Confirm the binary is available: `command -v gtkai`.
+
+If `.gtkai` is missing, gtk-ai is not initialized for this project. Create it to enable filtering:
 
 ```bash
-command -v gtkai
+echo '{}' > .gtkai
 ```
 
-If the binary is not found, the proxy is inactive. Commands run unmodified and output is unfiltered. No further steps in this skill apply.
+If `gtkai` is not in PATH, the binary is not installed. No filtering will occur regardless of the marker.
 
 ## 2. Commands intercepted
 
