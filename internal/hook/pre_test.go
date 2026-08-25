@@ -179,6 +179,82 @@ func TestPreRewritesCodex(t *testing.T) {
 	}
 }
 
+func TestPreRewritesCodexHookEventName(t *testing.T) {
+	payload := `{"tool_name":"local_shell","tool_input":{"command":"git status"}}`
+	var out bytes.Buffer
+	ok, err := hook.RunPre(strings.NewReader(payload), &out, "gtkai", hook.AgentCodex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok {
+		t.Fatal("expected rewrite")
+	}
+	var result struct {
+		HookSpecificOutput struct {
+			HookEventName string `json:"hookEventName"`
+		} `json:"hookSpecificOutput"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.HookSpecificOutput.HookEventName != "PreToolUse" {
+		t.Fatalf("hookEventName %q", result.HookSpecificOutput.HookEventName)
+	}
+}
+
+func TestPreRewritesCodexBash(t *testing.T) {
+	payload := `{"tool_name":"Bash","tool_input":{"command":"git status"}}`
+	var out bytes.Buffer
+	ok, err := hook.RunPre(strings.NewReader(payload), &out, "gtkai", hook.AgentCodex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok {
+		t.Fatal("expected rewrite for Bash tool")
+	}
+	var result struct {
+		HookSpecificOutput struct {
+			PermissionDecision string `json:"permissionDecision"`
+			UpdatedInput       struct {
+				Command string `json:"command"`
+			} `json:"updatedInput"`
+		} `json:"hookSpecificOutput"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.HookSpecificOutput.PermissionDecision != "allow" {
+		t.Fatalf("permissionDecision %q", result.HookSpecificOutput.PermissionDecision)
+	}
+	if result.HookSpecificOutput.UpdatedInput.Command != "gtkai git status" {
+		t.Fatalf("command %q", result.HookSpecificOutput.UpdatedInput.Command)
+	}
+}
+
+func TestPreLeavesEchoForCodex(t *testing.T) {
+	payload := `{"tool_name":"local_shell","tool_input":{"command":"echo hi"}}`
+	var out bytes.Buffer
+	ok, err := hook.RunPre(strings.NewReader(payload), &out, "gtkai", hook.AgentCodex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ok || out.Len() != 0 {
+		t.Fatalf("echo must pass through for codex, ok=%v out=%q", ok, out.String())
+	}
+}
+
+func TestPreLeavesGtkaiForCodex(t *testing.T) {
+	payload := `{"tool_name":"local_shell","tool_input":{"command":"gtkai git status"}}`
+	var out bytes.Buffer
+	ok, err := hook.RunPre(strings.NewReader(payload), &out, "gtkai", hook.AgentCodex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ok {
+		t.Fatal("already proxied command must not rewrite for codex")
+	}
+}
+
 func TestPreRewritesOpenCode(t *testing.T) {
 	payload := `{"tool_name":"bash","tool_input":{"command":"ls -la"}}`
 	var out bytes.Buffer
