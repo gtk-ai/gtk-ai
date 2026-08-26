@@ -36,7 +36,7 @@ func usage() {
 	fmt.Fprintf(os.Stderr, `gtkai %s
 
 Usage:
-  gtkai init [--path=<dir>]        Activate gtkai in the current project (writes .gtk-ai marker)
+  gtkai init                       Activate gtkai in the current project (writes .gtk-ai marker)
   gtkai hook-pre --agent=<agent>   PreToolUse hook — rewrites shell commands to gtkai
   gtkai hook-post --agent=<agent>  PostToolUse hook — reads stdin, writes filtered output
   gtkai json-merge <file>          Deep-merge JSON from stdin into <file>
