@@ -1,5 +1,6 @@
 import type { Plugin } from "@opencode-ai/plugin"
 import { existsSync } from "node:fs"
+import { spawnSync } from "node:child_process"
 
 function findGtkai(): string | null {
   const fromPath = Bun.which("gtkai")
@@ -14,6 +15,12 @@ function findGtkai(): string | null {
     if (existsSync(candidate)) return candidate
   }
   return null
+}
+
+function markerExists(): boolean {
+  const r = spawnSync("git", ["rev-parse", "--show-toplevel"], { encoding: "utf8" })
+  const root = r.status === 0 ? r.stdout.trim() : process.cwd()
+  return existsSync(`${root}/.gtk-ai`)
 }
 
 function runHook(gtkai: string, args: string[], payload: unknown): string {
@@ -33,6 +40,7 @@ export const GtkAI: Plugin = async () => {
     "tool.execute.before": async (input, output) => {
       argsByCall.set(input.callID, output.args as Record<string, unknown>)
       if (!gtkai) return
+      if (!markerExists()) return
       if (input.tool !== "bash" && input.tool !== "shell") return
       const command = (output.args as { command?: unknown }).command
       if (typeof command !== "string" || command === "") return
@@ -56,6 +64,7 @@ export const GtkAI: Plugin = async () => {
       const args = argsByCall.get(input.callID)
       argsByCall.delete(input.callID)
       if (!gtkai) return
+      if (!markerExists()) return
       if (args === undefined) return
       if (input.tool === "bash" || input.tool === "shell") return
       if (output.output === "") return

@@ -69,6 +69,16 @@ claude plugin install -s user gtk-ai@gtk-ai
 
 Then restart the agent.
 
+### Activate in a project
+
+Hooks only run in projects where gtkai has been explicitly activated. Run once at the repo root:
+
+```bash
+gtkai init
+```
+
+This writes an empty `.gtk-ai` marker at the git root. Hooks silently skip directories that do not have the marker, so gtkai never activates in projects you did not opt in to.
+
 ### Option B: build from source
 
 Requires Go 1.22+.
