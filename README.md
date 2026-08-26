@@ -44,7 +44,7 @@ Savings grow with output size. Small outputs may not be reduced.
 
 ## Installation
 
-gtk-ai requires the `gtkai` binary plus one integration per coding agent. The installer default is `--agent=auto`: it configures every compatible agent it finds on the machine.
+Installs the `gtkai` binary and configures hooks for every compatible agent found on the machine. Run once per machine.
 
 ### Option A: install script
 
@@ -69,16 +69,6 @@ claude plugin install -s user gtk-ai@gtk-ai
 
 Then restart the agent.
 
-### Activate in a project
-
-Hooks only run in projects where gtkai has been explicitly activated. Run once at the repo root:
-
-```bash
-gtkai init
-```
-
-This writes an empty `.gtk-ai` marker at the git root. Hooks silently skip directories that do not have the marker, so gtkai never activates in projects you did not opt in to.
-
 ### Option B: build from source
 
 Requires Go 1.22+.
@@ -102,6 +92,16 @@ GTKAI_SKIP_BINARY=1 sh install.sh -- --agent=all
 | **Hooks** | plugin `PreToolUse` / `PostToolUse` | `~/.cursor/hooks/` | `~/.codex/hooks/` | `~/.config/opencode/plugins/gtkai.ts` |
 | **Shell rewrite** | matcher `Bash` | matcher `Shell` | matcher `Bash` and shell aliases | `tool.execute.before` |
 | **Read / MCP post** | yes | MCP only | shell rewrite only | `read` and MCP tools |
+
+## Project activation
+
+Once installed, gtkai must be activated per project. Run once at the repo root:
+
+```bash
+gtkai init
+```
+
+This writes an empty `.gtk-ai` marker at the git root. Hooks silently skip any project without the marker — gtkai never activates where you did not opt in.
 
 ## Built-in modules
 
