@@ -216,6 +216,44 @@ gtk-ai/
 
 The `registry` package is the only shared dependency between modules. Modules never import each other.
 
+## Known issues
+
+### Codex: PreToolUse hook shows "New hook — review required"
+
+When the `PreToolUse` hook is added to `~/.codex/hooks.json` for the first time, Codex CLI requires an explicit trust review before running it. This is expected — it is a security feature of Codex, not a bug in gtkai.
+
+**Symptom**
+
+```
+PreToolUse hooks
+1 hook needs review before it can run.
+
+[!] Hook 1 · new
+
+Event     PreToolUse
+Matcher   Bash|shell|local_shell|container_exec|exec_command|shell_command
+Source    User config - ~/.codex/hooks.json
+Command   ~/.codex/hooks/gtkai-pre-tool-use.sh
+Trust     New hook - review required
+```
+
+**Why it happens**
+
+Codex stores a SHA-256 hash of each approved hook command in `~/.codex/config.toml` under `[hooks.state]`. A hook without a recorded hash is treated as untrusted and blocked until the user approves it.
+
+**Fix**
+
+Start a Codex session normally. When the review prompt appears, approve the hook (press `a` or follow the on-screen prompt). Codex writes the hash to `config.toml` and the hook runs on all subsequent sessions without interruption.
+
+After approval, `config.toml` will contain an entry like:
+
+```toml
+[hooks.state."/Users/<you>/.codex/hooks.json:pre_tool_use:0:0"]
+trusted_hash = "sha256:<hash>"
+```
+
+The `SessionStart` and `Stop` hooks follow the same flow and must be approved once each if they were not already trusted.
+
 ## License
 
 Apache 2.0, see [LICENSE](LICENSE). Attribution required on redistribution.
