@@ -365,3 +365,28 @@ func TestIntegrationHookPreDateAlreadyProxied(t *testing.T) {
 		t.Fatalf("already proxied command must produce no rewrite output, got: %s", out)
 	}
 }
+
+func TestIntegrationInit(t *testing.T) {
+	bin := buildBinary(t)
+	dir := t.TempDir()
+
+	out, code := run(t, bin, dir, "init")
+	if code != 0 {
+		t.Fatalf("gtkai init: exit %d, output:\n%s", code, out)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".gtk-ai")); err != nil {
+		t.Fatalf(".gtk-ai marker not created: %v", err)
+	}
+}
+
+func TestIntegrationInitIdempotent(t *testing.T) {
+	bin := buildBinary(t)
+	dir := t.TempDir()
+
+	if _, code := run(t, bin, dir, "init"); code != 0 {
+		t.Fatalf("first init failed")
+	}
+	if _, code := run(t, bin, dir, "init"); code != 0 {
+		t.Fatalf("second init must not fail")
+	}
+}

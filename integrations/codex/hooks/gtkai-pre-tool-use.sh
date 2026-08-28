@@ -12,4 +12,9 @@ if [ -z "$GTKAI" ]; then
 fi
 
 [ -z "$GTKAI" ] && exit 0
+
+# Only activate in projects that have run `gtkai init`.
+_root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+[ -f "$_root/.gtk-ai" ] || exit 0
+
 exec "$GTKAI" hook-pre --agent=codex
